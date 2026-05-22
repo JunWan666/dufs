@@ -43,6 +43,185 @@ var DIR_EMPTY_NOTE;
  */
 const PARAMS = Object.fromEntries(new URLSearchParams(window.location.search).entries());
 
+const LANG_KEY = "dufs_lang";
+const AUTH_HEADER_KEY = "dufs_auth_header";
+const AUTH_USER_KEY = "dufs_auth_user";
+const AUTH_SCOPE = localStorage;
+
+const I18N = {
+  "zh-CN": {
+    noData: "没有可用数据",
+    noResults: "没有找到匹配结果",
+    emptyFolder: "这个文件夹是空的",
+    uploadToCreate: "上传文件后会自动创建这个文件夹",
+    indexTitle: "文件索引",
+    editTitle: "编辑",
+    viewTitle: "查看",
+    fileList: "文件列表",
+    readonly: "只读模式",
+    readwrite: "可读写",
+    guest: "访客",
+    login: "登录",
+    logout: "退出登录",
+    signInTitle: "登录到 Dufs",
+    signInDesc: "使用管理员或访客账号继续",
+    username: "用户名",
+    password: "密码",
+    signIn: "登录",
+    cancel: "取消",
+    close: "关闭",
+    authFailed: "用户名或密码不正确",
+    signedIn: "已登录",
+    signedInAs: "当前用户：",
+    signedOut: "已退出登录",
+    name: "名称",
+    modified: "修改时间",
+    size: "大小",
+    actions: "操作",
+    progress: "进度",
+    downloadZip: "打包下载",
+    downloadFolder: "下载文件夹为 .zip",
+    downloadFile: "下载文件",
+    moveRename: "移动或重命名",
+    delete: "删除",
+    editFile: "编辑文件",
+    viewFile: "查看文件",
+    copyLink: "复制访问链接",
+    copied: "已复制链接",
+    copyFailed: "复制失败",
+    pathNav: "路径导航",
+    back: "后退",
+    forward: "前进",
+    parentDir: "上一级",
+    refresh: "刷新",
+    currentPath: "当前路径",
+    save: "保存",
+    createFolderTitle: "新建文件夹",
+    createFolderDesc: "输入文件夹名称，支持多级路径。",
+    createFileTitle: "新建文件",
+    createFileDesc: "输入文件名称，创建后会进入编辑模式。",
+    folderName: "文件夹名称",
+    fileName: "文件名称",
+    create: "创建",
+    deleteTitle: "删除项目",
+    deleteDesc: "删除后无法通过 Dufs 撤销，请确认你要继续。",
+    deleteConfirm: "删除",
+    deleteQuestion: "确定删除",
+    moveTitle: "移动或重命名",
+    moveDesc: "输入新的绝对路径，例如 /docs/readme.md。",
+    newPath: "新路径",
+    move: "移动",
+    overrideTitle: "覆盖已有文件",
+    overrideDesc: "目标路径已经存在，继续会覆盖它。",
+    override: "覆盖",
+    saveOk: "已保存",
+    saveFailed: "保存失败",
+    getFileFailed: "获取文件失败",
+    downloadFailed: "下载失败",
+    deleteFailed: "删除失败",
+    moveFailed: "移动失败",
+    createFolderFailed: "创建文件夹失败",
+    createFileFailed: "创建文件失败",
+    retry: "重试",
+    uploadDone: "完成",
+    uploadFailed: "失败",
+    binaryNote: "该文件太大或不是文本文件，无法编辑。",
+    searchPlaceholder: "搜索文件或文件夹",
+    root: "根目录",
+    item: "项",
+    items: "项",
+  },
+  "en-US": {
+    noData: "No data",
+    noResults: "No results",
+    emptyFolder: "Empty folder",
+    uploadToCreate: "The folder will be created when a file is uploaded",
+    indexTitle: "Index",
+    editTitle: "Edit",
+    viewTitle: "View",
+    fileList: "Files",
+    readonly: "Read only",
+    readwrite: "Read and write",
+    guest: "Guest",
+    login: "Sign in",
+    logout: "Sign out",
+    signInTitle: "Sign in to Dufs",
+    signInDesc: "Continue with an admin or guest account",
+    username: "Username",
+    password: "Password",
+    signIn: "Sign in",
+    cancel: "Cancel",
+    close: "Close",
+    authFailed: "Invalid username or password",
+    signedIn: "Signed in",
+    signedInAs: "Current user: ",
+    signedOut: "Signed out",
+    name: "Name",
+    modified: "Last modified",
+    size: "Size",
+    actions: "Actions",
+    progress: "Progress",
+    downloadZip: "Download zip",
+    downloadFolder: "Download folder as .zip",
+    downloadFile: "Download file",
+    moveRename: "Move or rename",
+    delete: "Delete",
+    editFile: "Edit file",
+    viewFile: "View file",
+    copyLink: "Copy link",
+    copied: "Link copied",
+    copyFailed: "Copy failed",
+    pathNav: "Path navigation",
+    back: "Back",
+    forward: "Forward",
+    parentDir: "Parent folder",
+    refresh: "Refresh",
+    currentPath: "Current path",
+    save: "Save",
+    createFolderTitle: "New folder",
+    createFolderDesc: "Enter a folder name. Nested paths are supported.",
+    createFileTitle: "New file",
+    createFileDesc: "Enter a file name. The editor opens after creation.",
+    folderName: "Folder name",
+    fileName: "File name",
+    create: "Create",
+    deleteTitle: "Delete item",
+    deleteDesc: "This cannot be undone from Dufs.",
+    deleteConfirm: "Delete",
+    deleteQuestion: "Delete",
+    moveTitle: "Move or rename",
+    moveDesc: "Enter a new absolute path, such as /docs/readme.md.",
+    newPath: "New path",
+    move: "Move",
+    overrideTitle: "Overwrite existing file",
+    overrideDesc: "The target path already exists.",
+    override: "Overwrite",
+    saveOk: "Saved",
+    saveFailed: "Save failed",
+    getFileFailed: "Failed to get file",
+    downloadFailed: "Download failed",
+    deleteFailed: "Delete failed",
+    moveFailed: "Move failed",
+    createFolderFailed: "Create folder failed",
+    createFileFailed: "Create file failed",
+    retry: "Retry",
+    uploadDone: "Done",
+    uploadFailed: "Failed",
+    binaryNote: "Cannot edit because this file is too large or binary.",
+    searchPlaceholder: "Search files or folders",
+    root: "Root",
+    item: "item",
+    items: "items",
+  },
+};
+
+let currentLang = localStorage.getItem(LANG_KEY) || "zh-CN";
+if (!I18N[currentLang]) currentLang = "zh-CN";
+
+function t(key) {
+  return I18N[currentLang][key] || I18N["zh-CN"][key] || key;
+}
+
 const IFRAME_FORMATS = [
   ".pdf",
   ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".svg",
@@ -62,6 +241,11 @@ const ICONS = {
   edit: `<svg width="16" height="16" viewBox="0 0 16 16"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/></svg>`,
   delete: `<svg width="16" height="16" viewBox="0 0 16 16"><path d="M6.854 7.146a.5.5 0 1 0-.708.708L7.293 9l-1.147 1.146a.5.5 0 0 0 .708.708L8 9.707l1.146 1.147a.5.5 0 0 0 .708-.708L8.707 9l1.147-1.146a.5.5 0 0 0-.708-.708L8 8.293 6.854 7.146z"/><path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/></svg>`,
   view: `<svg width="16" height="16" viewBox="0 0 16 16"><path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm0 1h8a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1"/></svg>`,
+  copy: `<svg width="16" height="16" viewBox="0 0 16 16"><path d="M4 2.5A1.5 1.5 0 0 1 5.5 1h7A1.5 1.5 0 0 1 14 2.5v7a1.5 1.5 0 0 1-1.5 1.5H12v1.5A1.5 1.5 0 0 1 10.5 14h-7A1.5 1.5 0 0 1 2 12.5v-7A1.5 1.5 0 0 1 3.5 4H4V2.5zM5 4h5.5A1.5 1.5 0 0 1 12 5.5V10h.5a.5.5 0 0 0 .5-.5v-7a.5.5 0 0 0-.5-.5h-7a.5.5 0 0 0-.5.5V4zM3.5 5a.5.5 0 0 0-.5.5v7a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5v-7a.5.5 0 0 0-.5-.5h-7z"/></svg>`,
+  back: `<svg width="16" height="16" viewBox="0 0 16 16"><path d="M6.854 3.146a.5.5 0 0 1 0 .708L3.707 7H13.5a.5.5 0 0 1 0 1H3.707l3.147 3.146a.5.5 0 0 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 0 1 .708 0z"/></svg>`,
+  forward: `<svg width="16" height="16" viewBox="0 0 16 16"><path d="M9.146 3.146a.5.5 0 0 0 0 .708L12.293 7H2.5a.5.5 0 0 0 0 1h9.793l-3.147 3.146a.5.5 0 0 0 .708.708l4-4a.5.5 0 0 0 0-.708l-4-4a.5.5 0 0 0-.708 0z"/></svg>`,
+  up: `<svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 3.293 3.854 7.439a.5.5 0 1 1-.708-.707l4.5-4.5a.5.5 0 0 1 .708 0l4.5 4.5a.5.5 0 0 1-.708.707L8 3.293z"/><path d="M7.5 3h1v10.5a.5.5 0 0 1-1 0V3z"/></svg>`,
+  refresh: `<svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.418A6 6 0 1 1 8 2v1z"/><path d="M8 0a.5.5 0 0 1 .5.5v3A.5.5 0 0 1 8 4H5a.5.5 0 0 1 0-1h2.5V.5A.5.5 0 0 1 8 0z"/></svg>`,
 }
 
 /**
@@ -105,6 +289,14 @@ let $logoutBtn;
  * @type Element
  */
 let $userName;
+/**
+ * @type Element
+ */
+let $permissionPill;
+/**
+ * @type HTMLSelectElement
+ */
+let $languageSelect;
 
 // manage unload event to prevent leaving with uploads in progress
 const beforeUnloadHandler = (event) => {
@@ -115,18 +307,303 @@ const beforeUnloadHandler = (event) => {
   }
 };
 
+function updateEmptyNote() {
+  DIR_EMPTY_NOTE = PARAMS.q
+    ? t("noResults")
+    : DATA.dir_exists
+      ? t("emptyFolder")
+      : t("uploadToCreate");
+}
+
+function setupLanguage() {
+  if (!$languageSelect) return;
+  $languageSelect.value = currentLang;
+  $languageSelect.addEventListener("change", () => {
+    currentLang = $languageSelect.value;
+    localStorage.setItem(LANG_KEY, currentLang);
+    location.reload();
+  });
+}
+
+function applyLocale() {
+  document.documentElement.lang = currentLang;
+  const search = document.getElementById("search");
+  if (search) {
+    search.placeholder = t("searchPlaceholder");
+    search.title = t("searchPlaceholder");
+  }
+  const fileTitle = document.querySelector(".status-title");
+  if (fileTitle) fileTitle.textContent = t("fileList");
+  const subtitle = document.querySelector(".status-subtitle");
+  if (subtitle) subtitle.textContent = currentLang === "zh-CN" ? "拖拽文件到页面任意位置即可上传" : "Drop files anywhere on the page to upload";
+  const localeNote = document.querySelector(".locale-note");
+  if (localeNote) localeNote.textContent = currentLang === "zh-CN" ? "默认语言：中文（zh-CN）" : "Default language: Chinese (zh-CN)";
+  const loginText = document.querySelector(".login-btn span");
+  if (loginText) loginText.textContent = t("login");
+  const downloadText = document.querySelector(".download span");
+  if (downloadText) downloadText.textContent = t("downloadZip");
+  const moveText = document.querySelector(".move-file span");
+  if (moveText) moveText.textContent = t("move");
+  const deleteText = document.querySelector(".delete-file span");
+  if (deleteText) deleteText.textContent = t("delete");
+  const uploadText = document.querySelector(".upload-file span");
+  if (uploadText) uploadText.textContent = currentLang === "zh-CN" ? "上传" : "Upload";
+  const folderText = document.querySelector(".new-folder span");
+  if (folderText) folderText.textContent = t("createFolderTitle");
+  const fileText = document.querySelector(".new-file span");
+  if (fileText) fileText.textContent = t("createFileTitle");
+  const saveText = document.querySelector(".save-btn span");
+  if (saveText) saveText.textContent = t("save");
+  const uploadHeaders = document.querySelectorAll(".uploaders-table th");
+  if (uploadHeaders[0]) uploadHeaders[0].textContent = t("name");
+  if (uploadHeaders[1]) uploadHeaders[1].textContent = t("progress");
+  const pathbar = document.querySelector(".pathbar");
+  if (pathbar) pathbar.setAttribute("aria-label", t("pathNav"));
+  const pathbarLabel = document.querySelector(".pathbar-label");
+  if (pathbarLabel) pathbarLabel.textContent = t("currentPath");
+}
+
+function updatePermissionPill() {
+  if (!$permissionPill) return;
+  const canWrite = DATA.allow_upload || DATA.allow_delete;
+  $permissionPill.textContent = canWrite ? t("readwrite") : t("readonly");
+  $permissionPill.classList.toggle("can-write", canWrite);
+}
+
+function getAuthHeader() {
+  return AUTH_SCOPE.getItem(AUTH_HEADER_KEY) || "";
+}
+
+function getStoredUser() {
+  return AUTH_SCOPE.getItem(AUTH_USER_KEY) || "";
+}
+
+function setStoredAuth(user, pass) {
+  const raw = `${user}:${pass}`;
+  const bytes = new TextEncoder().encode(raw);
+  let bin = "";
+  bytes.forEach(byte => {
+    bin += String.fromCharCode(byte);
+  });
+  AUTH_SCOPE.setItem(AUTH_HEADER_KEY, `Basic ${btoa(bin)}`);
+  AUTH_SCOPE.setItem(AUTH_USER_KEY, user);
+}
+
+function clearStoredAuth() {
+  AUTH_SCOPE.removeItem(AUTH_HEADER_KEY);
+  AUTH_SCOPE.removeItem(AUTH_USER_KEY);
+}
+
+function authFetch(input, init = {}) {
+  const headers = new Headers(init.headers || {});
+  const authHeader = getAuthHeader();
+  if (authHeader && !headers.has("Authorization")) {
+    headers.set("Authorization", authHeader);
+  }
+  return fetch(input, { ...init, headers });
+}
+
+async function refreshIndexDataFromServer() {
+  const url = new URL(location.href);
+  url.searchParams.set("json", "");
+  const res = await authFetch(url.toString());
+  await assertResOK(res);
+  DATA = await res.json();
+  updateEmptyNote();
+}
+
+function showToast(type, title, message = "") {
+  const region = document.getElementById("toast-region");
+  if (!region) return;
+  const toast = document.createElement("div");
+  toast.className = `toast ${type || ""}`;
+  toast.innerHTML = `
+    <div class="toast-title">${encodedStr(title)}</div>
+    ${message ? `<div class="toast-message">${encodedStr(message)}</div>` : ""}
+  `;
+  region.appendChild(toast);
+  setTimeout(() => {
+    toast.remove();
+  }, 3600);
+}
+
+function closeDialog() {
+  const layer = document.getElementById("dialog-layer");
+  if (!layer) return;
+  layer.classList.add("hidden");
+  layer.setAttribute("aria-hidden", "true");
+  layer.innerHTML = "";
+}
+
+function dialogShell({ title, desc = "", body = "", actions = "" }) {
+  return `
+    <div class="dialog-card" role="dialog" aria-modal="true">
+      <div class="dialog-head">
+        <div>
+          <h2 class="dialog-title">${encodedStr(title)}</h2>
+          ${desc ? `<p class="dialog-desc">${encodedStr(desc)}</p>` : ""}
+        </div>
+        <button class="dialog-close" type="button" title="${t("close")}">×</button>
+      </div>
+      ${body}
+      <div class="dialog-actions">${actions}</div>
+    </div>
+  `;
+}
+
+function openInputDialog({ title, desc, label, value = "", confirmText }) {
+  const layer = document.getElementById("dialog-layer");
+  return new Promise(resolve => {
+    layer.innerHTML = dialogShell({
+      title,
+      desc,
+      body: `
+        <div class="form-row">
+          <label for="dialog-input">${encodedStr(label)}</label>
+          <input class="dialog-input" id="dialog-input" type="text">
+        </div>
+      `,
+      actions: `
+        <button class="btn" type="button" data-action="cancel">${t("cancel")}</button>
+        <button class="btn btn-primary" type="button" data-action="confirm">${encodedStr(confirmText)}</button>
+      `,
+    });
+    const input = layer.querySelector("#dialog-input");
+    input.value = value;
+    const finish = result => {
+      closeDialog();
+      resolve(result);
+    };
+    layer.classList.remove("hidden");
+    layer.setAttribute("aria-hidden", "false");
+    input.focus();
+    input.select();
+    layer.querySelector(".dialog-close").addEventListener("click", () => finish(null));
+    layer.querySelector("[data-action='cancel']").addEventListener("click", () => finish(null));
+    layer.querySelector("[data-action='confirm']").addEventListener("click", () => finish(input.value.trim()));
+    input.addEventListener("keydown", event => {
+      if (event.key === "Enter") finish(input.value.trim());
+      if (event.key === "Escape") finish(null);
+    });
+  });
+}
+
+function openConfirmDialog({ title, desc, detail = "", confirmText, danger = false }) {
+  const layer = document.getElementById("dialog-layer");
+  return new Promise(resolve => {
+    layer.innerHTML = dialogShell({
+      title,
+      desc,
+      body: detail ? `<p class="dialog-desc">${encodedStr(detail)}</p>` : "",
+      actions: `
+        <button class="btn" type="button" data-action="cancel">${t("cancel")}</button>
+        <button class="btn ${danger ? "btn-danger" : "btn-primary"}" type="button" data-action="confirm">${encodedStr(confirmText)}</button>
+      `,
+    });
+    const finish = result => {
+      closeDialog();
+      resolve(result);
+    };
+    layer.classList.remove("hidden");
+    layer.setAttribute("aria-hidden", "false");
+    layer.querySelector(".dialog-close").addEventListener("click", () => finish(false));
+    layer.querySelector("[data-action='cancel']").addEventListener("click", () => finish(false));
+    layer.querySelector("[data-action='confirm']").addEventListener("click", () => finish(true));
+  });
+}
+
+function openLoginDialog() {
+  const layer = document.getElementById("dialog-layer");
+  return new Promise(resolve => {
+    layer.innerHTML = dialogShell({
+      title: t("signInTitle"),
+      desc: t("signInDesc"),
+      body: `
+        <div class="form-row">
+          <label for="login-user">${t("username")}</label>
+          <input class="dialog-input" id="login-user" type="text" autocomplete="username">
+        </div>
+        <div class="form-row">
+          <label for="login-pass">${t("password")}</label>
+          <input class="dialog-input" id="login-pass" type="password" autocomplete="current-password">
+        </div>
+        <div class="dialog-error"></div>
+      `,
+      actions: `
+        <button class="btn" type="button" data-action="cancel">${t("cancel")}</button>
+        <button class="btn btn-primary" type="button" data-action="confirm">${t("signIn")}</button>
+      `,
+    });
+    const userInput = layer.querySelector("#login-user");
+    const passInput = layer.querySelector("#login-pass");
+    const error = layer.querySelector(".dialog-error");
+    const confirm = layer.querySelector("[data-action='confirm']");
+    const finish = result => {
+      closeDialog();
+      resolve(result);
+    };
+    const submit = async () => {
+      const user = userInput.value.trim();
+      const pass = passInput.value;
+      if (!user || !pass) {
+        error.textContent = t("authFailed");
+        return;
+      }
+      confirm.disabled = true;
+      error.textContent = "";
+      setStoredAuth(user, pass);
+      try {
+        await checkAuth("login", { prompt: false });
+        showToast("success", t("signedIn"), `${t("signedInAs")}${user}`);
+        finish(true);
+        location.reload();
+      } catch {
+        clearStoredAuth();
+        error.textContent = t("authFailed");
+        confirm.disabled = false;
+      }
+    };
+    layer.classList.remove("hidden");
+    layer.setAttribute("aria-hidden", "false");
+    userInput.value = getStoredUser();
+    userInput.focus();
+    layer.querySelector(".dialog-close").addEventListener("click", () => finish(false));
+    layer.querySelector("[data-action='cancel']").addEventListener("click", () => finish(false));
+    confirm.addEventListener("click", submit);
+    [userInput, passInput].forEach(input => {
+      input.addEventListener("keydown", event => {
+        if (event.key === "Enter") submit();
+        if (event.key === "Escape") finish(false);
+      });
+    });
+  });
+}
+
 // Produce table when window loads
 window.addEventListener("DOMContentLoaded", async () => {
   const $indexData = document.getElementById('index-data');
   if (!$indexData) {
-    alert("No data");
+    showToast("error", t("noData"));
     return;
   }
 
   DATA = JSON.parse(decodeBase64($indexData.innerHTML));
-  DIR_EMPTY_NOTE = PARAMS.q ? 'No results' : DATA.dir_exists ? 'Empty folder' : 'Folder will be created when a file is uploaded';
+  if (getAuthHeader() && DATA.kind === "Index") {
+    try {
+      await refreshIndexDataFromServer();
+    } catch {
+      clearStoredAuth();
+    }
+  }
+  updateEmptyNote();
 
   await ready();
+});
+
+window.addEventListener("pageshow", event => {
+  if (event.persisted && getAuthHeader() && DATA?.auth && !DATA.user) {
+    location.reload();
+  }
 });
 
 async function ready() {
@@ -139,23 +616,44 @@ async function ready() {
   $loginBtn = document.querySelector(".login-btn");
   $logoutBtn = document.querySelector(".logout-btn");
   $userName = document.querySelector(".user-name");
+  $permissionPill = document.querySelector(".permission-pill");
+  $languageSelect = document.querySelector(".language-select");
 
   window.addEventListener('beforeunload', beforeUnloadHandler);
 
+  setupLanguage();
+  applyLocale();
+  document.body.dataset.kind = DATA.kind.toLowerCase();
+  const brand = document.querySelector(".brand-mark");
+  if (brand) brand.href = DATA.uri_prefix || "/";
   addBreadcrumb(DATA.href, DATA.uri_prefix);
+  updatePermissionPill();
+  if (DATA.auth) {
+    await setupAuth();
+  }
+  if (getAuthHeader() && DATA.auth) {
+    try {
+      await checkAuth(undefined, { prompt: false });
+    } catch {
+      clearStoredAuth();
+      if (DATA.kind === "Index" && !DATA.user) {
+        $loginBtn.classList.remove("hidden");
+      }
+    }
+  }
 
   if (DATA.kind === "Index") {
-    document.title = `Index of ${DATA.href} - Dufs`;
+    document.title = `${t("indexTitle")} ${DATA.href} - Dufs`;
     document.querySelector(".index-page").classList.remove("hidden");
 
     await setupIndexPage();
   } else if (DATA.kind === "Edit") {
-    document.title = `Edit ${DATA.href} - Dufs`;
+    document.title = `${t("editTitle")} ${DATA.href} - Dufs`;
     document.querySelector(".editor-page").classList.remove("hidden");
 
     await setupEditorPage();
   } else if (DATA.kind === "View") {
-    document.title = `View ${DATA.href} - Dufs`;
+    document.title = `${t("viewTitle")} ${DATA.href} - Dufs`;
     document.querySelector(".editor-page").classList.remove("hidden");
 
     await setupEditorPage();
@@ -236,9 +734,11 @@ class Uploader {
     if (this.uploadOffset > 0) {
       ajax.open("PATCH", url);
       ajax.setRequestHeader("X-Update-Range", "append");
+      if (getAuthHeader()) ajax.setRequestHeader("Authorization", getAuthHeader());
       ajax.send(this.file.slice(this.uploadOffset));
     } else {
       ajax.open("PUT", url);
+      if (getAuthHeader()) ajax.setRequestHeader("Authorization", getAuthHeader());
       ajax.send(this.file);
       // setTimeout(() => ajax.abort(), 3000);
     }
@@ -246,7 +746,7 @@ class Uploader {
 
   async retry() {
     const { url } = this;
-    let res = await fetch(url, {
+    let res = await authFetch(url, {
       method: "HEAD",
     });
     let uploadOffset = 0;
@@ -274,7 +774,7 @@ class Uploader {
 
   complete() {
     const $uploadStatusNew = this.$uploadStatus.cloneNode(true);
-    $uploadStatusNew.innerHTML = `✓`;
+    $uploadStatusNew.innerHTML = `<span class="upload-ok" title="${t("uploadDone")}">✓</span>`;
     this.$uploadStatus.parentNode.replaceChild($uploadStatusNew, this.$uploadStatus);
     this.$uploadStatus = null;
     failUploaders.delete(this.idx);
@@ -283,7 +783,7 @@ class Uploader {
   }
 
   fail(reason = "") {
-    this.$uploadStatus.innerHTML = `<span style="width: 20px;" title="${reason}">✗</span><span class="retry-btn" id="retry${this.idx}" title="Retry">↻</span>`;
+    this.$uploadStatus.innerHTML = `<span style="width: 20px;" title="${encodedStr(reason || t("uploadFailed"))}">✗</span><span class="retry-btn" id="retry${this.idx}" title="${t("retry")}">↻</span>`;
     failUploaders.set(this.idx, this);
     Uploader.runnings--;
     Uploader.runQueue();
@@ -313,6 +813,8 @@ Uploader.runQueue = async () => {
       await checkAuth();
     } catch {
       Uploader.auth = false;
+      uploader.fail(t("authFailed"));
+      return;
     }
   }
   uploader.ajax();
@@ -343,7 +845,7 @@ function addBreadcrumb(href, uri_prefix) {
     }
     const encodedName = encodedStr(name);
     if (i === 0) {
-      $breadcrumb.insertAdjacentHTML("beforeend", `<a href="${path}" title="Root"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M6.5 14.5v-3.505c0-.245.25-.495.5-.495h2c.25 0 .5.25.5.5v3.5a.5.5 0 0 0 .5.5h4a.5.5 0 0 0 .5-.5v-7a.5.5 0 0 0-.146-.354L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293L8.354 1.146a.5.5 0 0 0-.708 0l-6 6A.5.5 0 0 0 1.5 7.5v7a.5.5 0 0 0 .5.5h4a.5.5 0 0 0 .5-.5z"/></svg></a>`);
+      $breadcrumb.insertAdjacentHTML("beforeend", `<a href="${path}" title="${t("root")}"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M6.5 14.5v-3.505c0-.245.25-.495.5-.495h2c.25 0 .5.25.5.5v3.5a.5.5 0 0 0 .5.5h4a.5.5 0 0 0 .5-.5v-7a.5.5 0 0 0-.146-.354L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293L8.354 1.146a.5.5 0 0 0-.708 0l-6 6A.5.5 0 0 0 1.5 7.5v7a.5.5 0 0 0 .5.5h4a.5.5 0 0 0 .5-.5z"/></svg></a>`);
     } else if (i === len - 1) {
       $breadcrumb.insertAdjacentHTML("beforeend", `<b>${encodedName}</b>`);
     } else {
@@ -359,7 +861,7 @@ async function setupIndexPage() {
   if (DATA.allow_archive) {
     const $download = document.querySelector(".download");
     $download.href = baseUrl() + "?zip";
-    $download.title = "Download folder as a .zip file";
+    $download.title = t("downloadFolder");
     $download.classList.add("dlwt");
     $download.classList.remove("hidden");
   }
@@ -371,9 +873,7 @@ async function setupIndexPage() {
     setupNewFile();
   }
 
-  if (DATA.auth) {
-    await setupAuth();
-  }
+  updatePermissionPill();
 
   if (DATA.allow_search) {
     setupSearch();
@@ -381,10 +881,53 @@ async function setupIndexPage() {
 
   renderPathsTableHead();
   renderPathsTableBody();
+  setupPathBar();
 
   if (DATA.user) {
     setupDownloadWithToken();
   }
+}
+
+function setupPathBar() {
+  const pathbar = document.querySelector(".pathbar");
+  if (!pathbar) return;
+  const back = pathbar.querySelector(".history-back");
+  const forward = pathbar.querySelector(".history-forward");
+  const parent = pathbar.querySelector(".parent-dir");
+  const refresh = pathbar.querySelector(".refresh-dir");
+  const crumbs = pathbar.querySelector(".pathbar-crumbs");
+  const parts = currentPathParts();
+
+  back.innerHTML = `${ICONS.back}<span>${t("back")}</span>`;
+  forward.innerHTML = `${ICONS.forward}<span>${t("forward")}</span>`;
+  parent.innerHTML = `${ICONS.up}<span>${t("parentDir")}</span>`;
+  refresh.innerHTML = `${ICONS.refresh}<span>${t("refresh")}</span>`;
+  back.title = t("back");
+  forward.title = t("forward");
+  parent.title = t("parentDir");
+  refresh.title = t("refresh");
+  back.addEventListener("click", () => history.back());
+  forward.addEventListener("click", () => history.forward());
+  refresh.addEventListener("click", () => location.reload());
+
+  if (parts.length === 0) {
+    parent.disabled = true;
+  } else {
+    parent.addEventListener("click", () => {
+      location.href = urlForPathParts(parts.slice(0, -1));
+    });
+  }
+
+  crumbs.innerHTML = [
+    `<a href="${urlForPathParts([])}">${t("root")}</a>`,
+    ...parts.map((part, index) => {
+      const label = encodedStr(part);
+      const href = urlForPathParts(parts.slice(0, index + 1));
+      const isLast = index === parts.length - 1;
+      return `<span class="pathbar-separator">›</span>${isLast ? `<b>${label}</b>` : `<a href="${href}" title="${t("pathNav")}: ${label}">${label}</a>`}`;
+    }),
+  ].join("");
+  pathbar.classList.remove("hidden");
 }
 
 /**
@@ -395,17 +938,17 @@ function renderPathsTableHead() {
     {
       name: "name",
       props: `colspan="2"`,
-      text: "Name",
+      text: t("name"),
     },
     {
       name: "mtime",
       props: ``,
-      text: "Last Modified",
+      text: t("modified"),
     },
     {
       name: "size",
       props: ``,
-      text: "Size",
+      text: t("size"),
     }
   ];
   $pathsTableHead.insertAdjacentHTML("beforeend", `
@@ -425,7 +968,7 @@ function renderPathsTableHead() {
     const icon = `<span>${svg}</span>`
     return `<th class="cell-${item.name}" ${item.props}><a href="?${qs}">${item.text}${icon}</a></th>`
   }).join("\n")}
-      <th class="cell-actions">Actions</th>
+      <th class="cell-actions">${t("actions")}</th>
     </tr>
   `);
 }
@@ -461,37 +1004,39 @@ function addPath(file, index) {
   let actionMove = "";
   let actionEdit = "";
   let actionView = "";
+  const actionCopy = `<button onclick="copyPathLink(${index})" class="action-btn" type="button" title="${t("copyLink")}">${ICONS.copy}</button>`;
   let isDir = file.path_type.endsWith("Dir");
   if (isDir) {
     url += "/";
     if (DATA.allow_archive) {
       actionDownload = `
       <div class="action-btn">
-        <a class="dlwt" href="${url}?zip" title="Download folder as a .zip file" download>${ICONS.download}</a>
+        <a class="dlwt" href="${url}?zip" title="${t("downloadFolder")}" download>${ICONS.download}</a>
       </div>`;
     }
   } else {
     actionDownload = `
     <div class="action-btn" >
-      <a class="dlwt" href="${url}" title="Download file" download>${ICONS.download}</a>
+      <a class="dlwt" href="${url}" title="${t("downloadFile")}" download>${ICONS.download}</a>
     </div>`;
   }
   if (DATA.allow_delete) {
     if (DATA.allow_upload) {
-      actionMove = `<div onclick="movePath(${index})" class="action-btn" id="moveBtn${index}" title="Move & Rename">${ICONS.move}</div>`;
+      actionMove = `<div onclick="movePath(${index})" class="action-btn" id="moveBtn${index}" title="${t("moveRename")}">${ICONS.move}</div>`;
       if (!isDir) {
-        actionEdit = `<a class="action-btn" title="Edit file" target="_blank" href="${url}?edit">${ICONS.edit}</a>`;
+        actionEdit = `<a class="action-btn" title="${t("editFile")}" target="_blank" href="${url}?edit">${ICONS.edit}</a>`;
       }
     }
     actionDelete = `
-    <div onclick="deletePath(${index})" class="action-btn" id="deleteBtn${index}" title="Delete">${ICONS.delete}</div>`;
+    <div onclick="deletePath(${index})" class="action-btn" id="deleteBtn${index}" title="${t("delete")}">${ICONS.delete}</div>`;
   }
   if (!actionEdit && !isDir) {
-    actionView = `<a class="action-btn" title="View file" target="_blank" href="${url}?view">${ICONS.view}</a>`;
+    actionView = `<a class="action-btn" title="${t("viewFile")}" target="_blank" href="${url}?view">${ICONS.view}</a>`;
   }
   let actionCell = `
   <td class="cell-actions">
     ${actionDownload}
+    ${actionCopy}
     ${actionView}
     ${actionMove}
     ${actionDelete}
@@ -543,14 +1088,11 @@ async function setupAuth() {
     $logoutBtn.classList.remove("hidden");
     $logoutBtn.addEventListener("click", logout);
     $userName.textContent = DATA.user;
+    const avatar = document.querySelector(".user-avatar");
+    if (avatar) avatar.textContent = DATA.user.slice(0, 1).toUpperCase();
   } else {
     $loginBtn.classList.remove("hidden");
-    $loginBtn.addEventListener("click", async () => {
-      try {
-        await checkAuth("login");
-      } catch { }
-      location.reload();
-    });
+    $loginBtn.addEventListener("click", () => openLoginDialog());
   }
 }
 
@@ -561,12 +1103,12 @@ function setupDownloadWithToken() {
       try {
         const link = e.currentTarget || e.target;
         const originalHref = link.getAttribute("href");
-        const tokengenUrl = new URL(originalHref);
+        const tokengenUrl = new URL(originalHref, location.href);
         tokengenUrl.searchParams.set("tokengen", "");
-        const res = await fetch(tokengenUrl);
-        if (!res.ok) throw new Error("Failed to fetch token");
+        const res = await authFetch(tokengenUrl);
+        if (!res.ok) throw new Error(t("downloadFailed"));
         const token = await res.text();
-        const downloadUrl = new URL(originalHref);
+        const downloadUrl = new URL(originalHref, location.href);
         downloadUrl.searchParams.set("token", token);
         const tempA = document.createElement("a");
         tempA.href = downloadUrl.toString();
@@ -575,7 +1117,7 @@ function setupDownloadWithToken() {
         tempA.click();
         document.body.removeChild(tempA);
       } catch (err) {
-        alert(`Failed to download, ${err.message}`);
+        showToast("error", t("downloadFailed"), err.message);
       }
     });
   });
@@ -612,8 +1154,13 @@ function setupUploadFile() {
 function setupNewFolder() {
   const $newFolder = document.querySelector(".new-folder");
   $newFolder.classList.remove("hidden");
-  $newFolder.addEventListener("click", () => {
-    const name = prompt("Enter folder name");
+  $newFolder.addEventListener("click", async () => {
+    const name = await openInputDialog({
+      title: t("createFolderTitle"),
+      desc: t("createFolderDesc"),
+      label: t("folderName"),
+      confirmText: t("create"),
+    });
     if (name) createFolder(name);
   });
 }
@@ -621,18 +1168,27 @@ function setupNewFolder() {
 function setupNewFile() {
   const $newFile = document.querySelector(".new-file");
   $newFile.classList.remove("hidden");
-  $newFile.addEventListener("click", () => {
-    const name = prompt("Enter file name");
+  $newFile.addEventListener("click", async () => {
+    const name = await openInputDialog({
+      title: t("createFileTitle"),
+      desc: t("createFileDesc"),
+      label: t("fileName"),
+      confirmText: t("create"),
+    });
     if (name) createFile(name);
   });
 }
 
 async function setupEditorPage() {
   const url = baseUrl();
+  const $toolbox = document.querySelector(".toolbox");
 
   const $download = document.querySelector(".download");
   $download.classList.remove("hidden");
   $download.href = url;
+  $download.title = t("downloadFile");
+  const downloadText = $download.querySelector("span");
+  if (downloadText) downloadText.textContent = t("downloadFile");
 
   if (DATA.kind == "Edit") {
     const $moveFile = document.querySelector(".move-file");
@@ -657,6 +1213,10 @@ async function setupEditorPage() {
 
     if (DATA.editable) {
       const $saveBtn = document.querySelector(".save-btn");
+      if ($toolbox) {
+        $toolbox.insertBefore($saveBtn, $toolbox.firstElementChild);
+      }
+      $saveBtn.classList.add("primary", "editor-save");
       $saveBtn.classList.remove("hidden");
       $saveBtn.addEventListener("click", saveChange);
     }
@@ -672,14 +1232,14 @@ async function setupEditorPage() {
       $notEditable.insertAdjacentHTML("afterend", `<iframe src="${url}" sandbox width="100%" height="${window.innerHeight - 100}px"></iframe>`);
     } else {
       $notEditable.classList.remove("hidden");
-      $notEditable.textContent = "Cannot edit because file is too large or binary.";
+      $notEditable.textContent = t("binaryNote");
     }
     return;
   }
 
   $editor.classList.remove("hidden");
   try {
-    const res = await fetch(baseUrl());
+    const res = await authFetch(baseUrl());
     await assertResOK(res);
     const encoding = getEncoding(res.headers.get("content-type"));
     if (encoding === "utf-8") {
@@ -691,7 +1251,7 @@ async function setupEditorPage() {
       $editor.value = decoder.decode(dataView);
     }
   } catch (err) {
-    alert(`Failed to get file, ${err.message}`);
+    showToast("error", t("getFileFailed"), err.message);
   }
 }
 
@@ -715,16 +1275,23 @@ async function deletePath(index) {
 }
 
 async function doDeletePath(name, url, cb) {
-  if (!confirm(`Delete \`${name}\`?`)) return;
+  const ok = await openConfirmDialog({
+    title: t("deleteTitle"),
+    desc: t("deleteDesc"),
+    detail: `${t("deleteQuestion")} "${name}"?`,
+    confirmText: t("deleteConfirm"),
+    danger: true,
+  });
+  if (!ok) return;
   try {
     await checkAuth();
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
       method: "DELETE",
     });
     await assertResOK(res);
     cb();
   } catch (err) {
-    alert(`Cannot delete \`${file.name}\`, ${err.message}`);
+    showToast("error", t("deleteFailed"), `${name}: ${err.message}`);
   }
 }
 
@@ -743,6 +1310,31 @@ async function movePath(index) {
   }
 }
 
+async function copyPathLink(index) {
+  const file = DATA.paths[index];
+  if (!file) return;
+  let url = newUrl(file.name);
+  if (file.path_type.endsWith("Dir")) url += "/";
+  const absoluteUrl = new URL(url, location.href).toString();
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(absoluteUrl);
+    } else {
+      const input = document.createElement("input");
+      input.value = absoluteUrl;
+      input.style.position = "fixed";
+      input.style.left = "-9999px";
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand("copy");
+      input.remove();
+    }
+    showToast("success", t("copied"), absoluteUrl);
+  } catch (err) {
+    showToast("error", t("copyFailed"), err.message);
+  }
+}
+
 async function doMovePath(fileUrl) {
   const fileUrlObj = new URL(fileUrl);
 
@@ -750,7 +1342,13 @@ async function doMovePath(fileUrl) {
 
   const filePath = decodeURIComponent(fileUrlObj.pathname.slice(prefix.length));
 
-  let newPath = prompt("Enter new path", filePath);
+  let newPath = await openInputDialog({
+    title: t("moveTitle"),
+    desc: t("moveDesc"),
+    label: t("newPath"),
+    value: filePath,
+    confirmText: t("move"),
+  });
   if (!newPath) return;
   if (!newPath.startsWith("/")) newPath = "/" + newPath;
   if (filePath === newPath) return;
@@ -758,15 +1356,22 @@ async function doMovePath(fileUrl) {
 
   try {
     await checkAuth();
-    const res1 = await fetch(newFileUrl, {
+    const res1 = await authFetch(newFileUrl, {
       method: "HEAD",
     });
     if (res1.status === 200) {
-      if (!confirm("Override existing file?")) {
+      const ok = await openConfirmDialog({
+        title: t("overrideTitle"),
+        desc: t("overrideDesc"),
+        detail: newPath,
+        confirmText: t("override"),
+        danger: true,
+      });
+      if (!ok) {
         return;
       }
     }
-    const res2 = await fetch(fileUrl, {
+    const res2 = await authFetch(fileUrl, {
       method: "MOVE",
       headers: {
         "Destination": newFileUrl,
@@ -775,7 +1380,7 @@ async function doMovePath(fileUrl) {
     await assertResOK(res2);
     return newFileUrl;
   } catch (err) {
-    alert(`Cannot move \`${filePath}\` to \`${newPath}\`, ${err.message}`);
+    showToast("error", t("moveFailed"), `${filePath} -> ${newPath}: ${err.message}`);
   }
 }
 
@@ -785,37 +1390,44 @@ async function doMovePath(fileUrl) {
  */
 async function saveChange() {
   try {
-    await fetch(baseUrl(), {
+    await checkAuth();
+    const res = await authFetch(baseUrl(), {
       method: "PUT",
       body: $editor.value,
     });
+    await assertResOK(res);
+    showToast("success", t("saveOk"));
     location.reload();
   } catch (err) {
-    alert(`Failed to save file, ${err.message}`);
+    showToast("error", t("saveFailed"), err.message);
   }
 }
 
-async function checkAuth(variant) {
+async function checkAuth(variant, options = {}) {
   if (!DATA.auth) return;
+  if (!getAuthHeader() && options.prompt !== false) {
+    const ok = await openLoginDialog();
+    if (!ok) throw new Error(t("authFailed"));
+    return;
+  }
   const qs = variant ? `?${variant}` : "";
-  const res = await fetch(baseUrl() + qs, {
+  const res = await authFetch(baseUrl() + qs, {
     method: "CHECKAUTH",
   });
   await assertResOK(res);
   $loginBtn.classList.add("hidden");
   $logoutBtn.classList.remove("hidden");
-  $userName.textContent = await res.text();
+  const user = await res.text();
+  $userName.textContent = user || getStoredUser();
+  const avatar = document.querySelector(".user-avatar");
+  if (avatar) avatar.textContent = ($userName.textContent || t("guest")).slice(0, 1).toUpperCase();
 }
 
 function logout() {
   if (!DATA.auth) return;
-  const url = baseUrl();
-  const xhr = new XMLHttpRequest();
-  xhr.open("LOGOUT", url, true, DATA.user);
-  xhr.onload = () => {
-    location.href = url;
-  }
-  xhr.send();
+  clearStoredAuth();
+  showToast("success", t("signedOut"));
+  location.href = baseUrl();
 }
 
 /**
@@ -826,13 +1438,13 @@ async function createFolder(name) {
   const url = newUrl(name);
   try {
     await checkAuth();
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
       method: "MKCOL",
     });
     await assertResOK(res);
     location.href = url;
   } catch (err) {
-    alert(`Cannot create folder \`${name}\`, ${err.message}`);
+    showToast("error", t("createFolderFailed"), `${name}: ${err.message}`);
   }
 }
 
@@ -840,14 +1452,14 @@ async function createFile(name) {
   const url = newUrl(name);
   try {
     await checkAuth();
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
       method: "PUT",
       body: "",
     });
     await assertResOK(res);
     location.href = url + "?edit";
   } catch (err) {
-    alert(`Cannot create file \`${name}\`, ${err.message}`);
+    showToast("error", t("createFileFailed"), `${name}: ${err.message}`);
   }
 }
 
@@ -882,6 +1494,22 @@ function newUrl(name) {
 
 function baseUrl() {
   return location.href.split(/[?#]/)[0];
+}
+
+function currentPathParts() {
+  return DATA.href === "/"
+    ? []
+    : DATA.href.split("/").filter(Boolean);
+}
+
+function urlForPathParts(parts) {
+  const prefix = DATA.uri_prefix || "/";
+  let url = prefix.endsWith("/") ? prefix : `${prefix}/`;
+  if (parts.length > 0) {
+    url += parts.map(encodeURIComponent).join("/");
+    url += "/";
+  }
+  return url;
 }
 
 function baseName(url) {
@@ -927,7 +1555,7 @@ function padZero(value, size) {
 }
 
 function formatDirSize(size) {
-  const unit = size === 1 ? "item" : "items";
+  const unit = size === 1 ? t("item") : t("items");
   const num = size >= MAX_SUBPATHS_COUNT ? `>${MAX_SUBPATHS_COUNT - 1}` : `${size}`;
   return ` ${num} ${unit}`;
 }
