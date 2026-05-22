@@ -1,215 +1,253 @@
 # Dufs
 
-[![CI](https://github.com/sigoden/dufs/actions/workflows/ci.yaml/badge.svg)](https://github.com/sigoden/dufs/actions/workflows/ci.yaml)
-[![Crates](https://img.shields.io/crates/v/dufs.svg)](https://crates.io/crates/dufs)
-[![Docker Pulls](https://img.shields.io/docker/pulls/sigoden/dufs)](https://hub.docker.com/r/sigoden/dufs)
+Dufs 是一个轻量级的网页文件管理器和 WebDAV 服务器，支持静态文件服务、上传下载、搜索、访问控制、文件编辑、目录打包下载、断点传输、HTTPS 和 WebDAV。
 
-Dufs is a distinctive utility file server that supports static serving, uploading, searching, accessing control, webdav...
+当前版本包含一套中文优先的新 UI：登录弹窗、权限状态、文件操作、路径导航、复制访问链接、编辑器工具栏等交互都做了重新整理。
 
-![demo](https://user-images.githubusercontent.com/4012553/220513063-ff0f186b-ac54-4682-9af4-47a9781dee0d.png)
+## 功能特性
 
-## Features
+- 静态文件浏览和下载
+- 文件夹打包为 zip 下载
+- 上传文件和文件夹，支持拖拽上传
+- 创建、编辑、搜索文件
+- 断点上传和断点下载
+- 账号访问控制
+- HTTPS 支持
+- WebDAV 支持
+- 可通过 Docker、二进制文件或 Cargo 安装
 
-- Serve static files
-- Download folder as zip file
-- Upload files and folders (Drag & Drop)
-- Create/Edit/Search files
-- Resumable/partial uploads/downloads
-- Access control
-- Support https
-- Support webdav
-- Easy to use with curl
+## Docker 快速开始
 
-## Install
+只读共享当前目录：
 
-### With cargo
-
+```sh
+docker run --rm -p 5000:5000 -v "$PWD:/data" tannic666/dufs:latest /data
 ```
+
+启用上传、删除、搜索、目录打包下载和文件编辑：
+
+```sh
+docker run --rm -p 5000:5000 -v "$PWD:/data" tannic666/dufs:latest /data -A
+```
+
+启用登录账号：
+
+```sh
+docker run --rm -p 5000:5000 -v "$PWD:/data" tannic666/dufs:latest /data \
+  -A \
+  -a admin:admin@/:rw \
+  -a guest:guest@/
+```
+
+打开浏览器访问：
+
+```text
+http://127.0.0.1:5000/
+```
+
+示例账号：
+
+```text
+admin / admin
+guest / guest
+```
+
+## 镜像标签
+
+- `tannic666/dufs:latest`
+- `tannic666/dufs:v1.0.0`
+
+支持架构：
+
+- `linux/amd64`
+- `linux/arm64`
+
+## 安装方式
+
+### Cargo
+
+```sh
 cargo install dufs
 ```
 
-### With docker
+### Homebrew
 
-```
-docker run -v `pwd`:/data -p 5000:5000 --rm sigoden/dufs /data -A
-```
-
-### With [Homebrew](https://brew.sh)
-
-```
+```sh
 brew install dufs
 ```
 
-### Binaries on macOS, Linux, Windows
+### 二进制文件
 
-Download from [Github Releases](https://github.com/sigoden/dufs/releases), unzip and add dufs to your $PATH.
+可以从 GitHub Releases 下载 macOS、Linux、Windows 对应平台的二进制文件，解压后将 `dufs` 加入 `PATH`。
 
-## CLI
+## CLI 用法
 
-```
-Dufs is a distinctive utility file server - https://github.com/sigoden/dufs
+```text
+Dufs is a distinctive utility file server - https://github.com/JunWan666/dufs
 
 Usage: dufs [OPTIONS] [serve-path]
 
 Arguments:
-  [serve-path]  Specific path to serve [default: .]
+  [serve-path]  指定要提供服务的路径，默认当前目录
 
 Options:
-  -c, --config <file>        Specify configuration file
-  -b, --bind <addrs>         Specify bind address or unix socket
-  -p, --port <port>          Specify port to listen on [default: 5000]
-      --path-prefix <path>   Specify a path prefix
-      --hidden <value>       Hide paths from directory listings, e.g. tmp,*.log,*.lock
-  -a, --auth <rules>         Add auth roles, e.g. user:pass@/dir1:rw,/dir2
-  -A, --allow-all            Allow all operations
-      --allow-upload         Allow upload files/folders
-      --allow-delete         Allow delete files/folders
-      --allow-search         Allow search files/folders
-      --allow-symlink        Allow symlink to files/folders outside root directory
-      --allow-archive        Allow download folders as archive file
-      --allow-hash           Allow ?hash query to get file sha256 hash
-      --enable-cors          Enable CORS, sets `Access-Control-Allow-Origin: *`
-      --render-index         Serve index.html when requesting a directory, returns 404 if not found index.html
-      --render-try-index     Serve index.html when requesting a directory, returns directory listing if not found index.html
-      --render-spa           Serve SPA(Single Page Application)
-      --assets <path>        Set the path to the assets directory for overriding the built-in assets
-      --log-format <format>  Customize http log format
-      --log-file <file>      Specify the file to save logs to, other than stdout/stderr
-      --compress <level>     Set zip compress level [default: low] [possible values: none, low, medium, high]
-      --completions <shell>  Print shell completion script for <shell> [possible values: bash, elvish, fish, powershell, zsh]
-      --tls-cert <path>      Path to an SSL/TLS certificate to serve with HTTPS
-      --tls-key <path>       Path to the SSL/TLS certificate's private key
-  -h, --help                 Print help
-  -V, --version              Print version
+  -c, --config <file>        指定配置文件
+  -b, --bind <addrs>         指定监听地址或 Unix socket
+  -p, --port <port>          指定监听端口，默认 5000
+      --path-prefix <path>   指定 URL 路径前缀
+      --hidden <value>       在目录列表中隐藏匹配路径，例如 tmp,*.log,*.lock
+  -a, --auth <rules>         添加认证规则，例如 user:pass@/dir1:rw,/dir2
+  -A, --allow-all            允许所有操作
+      --allow-upload         允许上传文件和文件夹
+      --allow-delete         允许删除文件和文件夹
+      --allow-search         允许搜索文件和文件夹
+      --allow-symlink        允许访问根目录之外的符号链接
+      --allow-archive        允许将文件夹打包下载
+      --allow-hash           允许通过 ?hash 查询文件 sha256
+      --enable-cors          启用 CORS，设置 Access-Control-Allow-Origin: *
+      --render-index         访问目录时返回 index.html，不存在则返回 404
+      --render-try-index     访问目录时优先返回 index.html，不存在则返回目录列表
+      --render-spa           启用单页应用 fallback
+      --assets <path>        指定自定义前端资源目录
+      --log-format <format>  自定义 HTTP 日志格式
+      --log-file <file>      指定日志文件，默认输出到 stdout/stderr
+      --compress <level>     设置 zip 压缩等级，默认 low
+      --completions <shell>  输出 shell 补全脚本
+      --tls-cert <path>      HTTPS 证书路径
+      --tls-key <path>       HTTPS 私钥路径
+  -h, --help                 打印帮助
+  -V, --version              打印版本
 ```
 
-## Examples
+## 常用示例
 
-Serve current working directory in read-only mode
+以只读模式共享当前目录：
 
-```
+```sh
 dufs
 ```
 
-Allow all operations like upload/delete/search/create/edit...
+允许上传、删除、搜索、创建和编辑等操作：
 
-```
+```sh
 dufs -A
 ```
 
-Only allow upload operation
+只允许上传：
 
-```
+```sh
 dufs --allow-upload
 ```
 
-Serve a specific directory
+共享指定目录：
 
-```
+```sh
 dufs Downloads
 ```
 
-Serve a single file
+共享单个文件：
 
-```
+```sh
 dufs linux-distro.iso
 ```
 
-Serve a single-page application like react/vue
+服务单页应用：
 
-```
+```sh
 dufs --render-spa
 ```
 
-Serve a static website with index.html
+服务带 `index.html` 的静态网站：
 
-```
+```sh
 dufs --render-index
 ```
 
-Require username/password
+要求用户名和密码：
 
-```
+```sh
 dufs -a admin:123@/:rw
 ```
 
-Listen on specific host:ip 
+监听指定地址和端口：
 
-```
+```sh
 dufs -b 127.0.0.1 -p 80
 ```
 
-Listen on unix socket
-```
+监听 Unix socket：
+
+```sh
 dufs -b /tmp/dufs.socket
 ```
 
-Use https
+启用 HTTPS：
 
-```
+```sh
 dufs --tls-cert my.crt --tls-key my.key
 ```
 
-## API
+## HTTP API
 
-Upload a file
+上传文件：
 
 ```sh
 curl -T path-to-file http://127.0.0.1:5000/new-path/path-to-file
 ```
 
-Download a file
+下载文件或获取文件哈希：
+
 ```sh
-curl http://127.0.0.1:5000/path-to-file           # download the file
-curl http://127.0.0.1:5000/path-to-file?hash      # retrieve the sha256 hash of the file
+curl http://127.0.0.1:5000/path-to-file
+curl http://127.0.0.1:5000/path-to-file?hash
 ```
 
-Download a folder as zip file
+将文件夹下载为 zip：
 
 ```sh
 curl -o path-to-folder.zip http://127.0.0.1:5000/path-to-folder?zip
 ```
 
-Delete a file/folder
+删除文件或文件夹：
 
 ```sh
 curl -X DELETE http://127.0.0.1:5000/path-to-file-or-folder
 ```
 
-Create a directory
+创建目录：
 
 ```sh
 curl -X MKCOL http://127.0.0.1:5000/path-to-folder
 ```
 
-Move the file/folder to the new path
+移动文件或文件夹：
 
 ```sh
 curl -X MOVE http://127.0.0.1:5000/path -H "Destination: http://127.0.0.1:5000/new-path"
 ```
 
-List/search directory contents
+列出或搜索目录内容：
 
 ```sh
-curl http://127.0.0.1:5000?q=Dockerfile           # search for files, similar to `find -name Dockerfile`
-curl http://127.0.0.1:5000?simple                 # output names only, similar to `ls -1`
-curl http://127.0.0.1:5000?json                   # output paths in json format
+curl http://127.0.0.1:5000?q=Dockerfile
+curl http://127.0.0.1:5000?simple
+curl http://127.0.0.1:5000?json
 ```
 
-With authorization (Both basic or digest auth works)
+携带认证信息访问：
 
 ```sh
-curl http://127.0.0.1:5000/file --user user:pass                 # basic auth
-curl http://127.0.0.1:5000/file --user user:pass --digest        # digest auth
+curl http://127.0.0.1:5000/file --user user:pass
+curl http://127.0.0.1:5000/file --user user:pass --digest
 ```
 
-Resumable downloads
+断点下载：
 
 ```sh
 curl -C- -o file http://127.0.0.1:5000/file
 ```
 
-Resumable uploads
+断点上传：
 
 ```sh
 upload_offset=$(curl -I -s http://127.0.0.1:5000/file | tr -d '\r' | sed -n 's/content-length: //p')
@@ -217,137 +255,126 @@ dd skip=$upload_offset if=file status=none ibs=1 | \
   curl -X PATCH -H "X-Update-Range: append" --data-binary @- http://127.0.0.1:5000/file
 ```
 
-Health checks
+健康检查：
 
 ```sh
 curl http://127.0.0.1:5000/__dufs__/health
 ```
 
-<details>
-<summary><h2>Advanced Topics</h2></summary>
+预期响应：
 
-### Access Control
-
-Dufs supports account based access control. You can control who can do what on which path with `--auth`/`-a`.
-
+```json
+{"status":"OK"}
 ```
+
+<details>
+<summary><h2>高级配置</h2></summary>
+
+### 访问控制
+
+Dufs 支持基于账号的访问控制，可以通过 `--auth` 或 `-a` 控制账号、路径和读写权限。
+
+```sh
 dufs -a admin:admin@/:rw -a guest:guest@/
 dufs -a user:pass@/:rw,/dir1 -a @/
 ```
 
-1. Use `@` to separate the account and paths. No account means anonymous user.
-2. Use `:` to separate the username and password of the account.
-3. Use `,` to separate paths.
-4. Use path suffix `:rw`/`:ro` set permissions: `read-write`/`read-only`. `:ro` can be omitted.
+规则说明：
 
-- `-a admin:admin@/:rw`: `admin` has complete permissions for all paths.
-- `-a guest:guest@/`: `guest` has read-only permissions for all paths.
-- `-a user:pass@/:rw,/dir1`: `user` has read-write permissions for `/*`, has read-only permissions for `/dir1/*`.
-- `-a @/`: All paths is publicly accessible, everyone can view/download it.
+1. 使用 `@` 分隔账号和路径，没有账号表示匿名用户。
+2. 使用 `:` 分隔用户名和密码。
+3. 使用 `,` 分隔多个路径。
+4. 使用路径后缀 `:rw` 或 `:ro` 设置读写或只读权限，`:ro` 可以省略。
 
-**Auth permissions are restricted by dufs global permissions.** If dufs does not enable upload permissions via `--allow-upload`, then the account will not have upload permissions even if it is granted `read-write`(`:rw`) permissions.
+示例：
 
-#### Hashed Password
+- `-a admin:admin@/:rw`：`admin` 对所有路径拥有完整权限。
+- `-a guest:guest@/`：`guest` 对所有路径只有只读权限。
+- `-a user:pass@/:rw,/dir1`：`user` 对 `/*` 拥有读写权限，对 `/dir1/*` 只有只读权限。
+- `-a @/`：所有路径允许匿名访问，任何人都可以查看和下载。
 
-DUFS supports the use of sha-512 hashed password.
+认证权限仍然受 Dufs 全局权限限制。例如没有通过 `--allow-upload` 启用上传时，即使账号拥有 `:rw` 权限，也不能上传文件。
 
-Create hashed password:
+### 哈希密码
+
+Dufs 支持 sha-512 哈希密码。
+
+生成哈希密码：
 
 ```sh
-$ openssl passwd -6 123456 # or `mkpasswd -m sha-512 123456`
-$6$tWMB51u6Kb2ui3wd$5gVHP92V9kZcMwQeKTjyTRgySsYJu471Jb1I6iHQ8iZ6s07GgCIO69KcPBRuwPE5tDq05xMAzye0NxVKuJdYs/
+openssl passwd -6 123456
 ```
 
-Use hashed password:
+使用哈希密码：
 
 ```sh
 dufs -a 'admin:$6$tWMB51u6Kb2ui3wd$5gVHP92V9kZcMwQeKTjyTRgySsYJu471Jb1I6iHQ8iZ6s07GgCIO69KcPBRuwPE5tDq05xMAzye0NxVKuJdYs/@/:rw'
 ```
-> The hashed password contains `$6`, which can expand to a variable in some shells, so you have to use **single quotes** to wrap it.
 
-Two important things for hashed passwords:
+注意：
 
-1. Dufs only supports sha-512 hashed passwords, so ensure that the password string always starts with `$6$`.
-2. Digest authentication does not function properly with hashed passwords.
+- Dufs 仅支持 sha-512 哈希密码，密码字符串需要以 `$6$` 开头。
+- 哈希密码中包含 `$6`，在部分 shell 中会被当作变量展开，建议使用单引号包裹。
+- Digest 认证无法正常配合哈希密码使用。
 
+### 隐藏路径
 
-### Hide Paths
-
-Dufs supports hiding paths from directory listings via option `--hidden <glob>,...`.
-
-```
-dufs --hidden .git,.DS_Store,tmp
-```
-
-> The glob used in --hidden only matches file and directory names, not paths. So `--hidden dir1/file` is invalid.
+通过 `--hidden <glob>,...` 可以从目录列表中隐藏指定名称。
 
 ```sh
-dufs --hidden '.*'                          # hidden dotfiles
-dufs --hidden '*/'                          # hidden all folders
-dufs --hidden '*.log,*.lock'                # hidden by exts
+dufs --hidden .git,.DS_Store,tmp
+dufs --hidden '.*'
+dufs --hidden '*/'
+dufs --hidden '*.log,*.lock'
 dufs --hidden '*.log' --hidden '*.lock'
 ```
 
-### Log Format
+`--hidden` 使用的 glob 只匹配文件名或目录名，不匹配完整路径，因此 `--hidden dir1/file` 无效。
 
-Dufs supports customize http log format with option `--log-format`.
+### 日志格式
 
-The log format can use following variables.
+通过 `--log-format` 可以自定义 HTTP 日志格式。
 
-| variable     | description                                                               |
-| ------------ | ------------------------------------------------------------------------- |
-| $remote_addr | client address                                                            |
-| $remote_user | user name supplied with authentication                                    |
-| $request     | full original request line                                                |
-| $status      | response status                                                           |
-| $http_       | arbitrary request header field. examples: $http_user_agent, $http_referer |
+可用变量：
 
+| 变量 | 说明 |
+| --- | --- |
+| `$remote_addr` | 客户端地址 |
+| `$remote_user` | 认证用户名 |
+| `$request` | 原始请求行 |
+| `$status` | 响应状态码 |
+| `$http_` | 任意请求头，例如 `$http_user_agent`、`$http_referer` |
 
-The default log format is `'$time_iso8601 $log_level - $remote_addr "$request" $status`.
-```
-2022-08-06T06:59:31+08:00 INFO - 127.0.0.1 "GET /" 200
-```
+默认日志格式：
 
-A json log format is also supported.
-```
-dufs --log-format '{"time":"$time_local","addr":"$remote_addr","uri":"$request_uri", "method":"$request_method","status":$status}'
-
-{"time":"2022-08-06T06:59:31+08:00","addr":"127.0.0.1","uri":"/", "method":"GET","status":200}
+```text
+$time_iso8601 $log_level - $remote_addr "$request" $status
 ```
 
-Disable http log
+JSON 日志格式示例：
+
+```sh
+dufs --log-format '{"time":"$time_local","addr":"$remote_addr","uri":"$request_uri","method":"$request_method","status":$status}'
 ```
+
+关闭 HTTP 日志：
+
+```sh
 dufs --log-format=''
 ```
 
-Log user-agent
-```
-dufs --log-format '$remote_addr "$request" $status $http_user_agent'
-```
-```
-2022-08-06T06:53:55+08:00 INFO - 127.0.0.1 "GET /" 200 Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36
-```
+### 环境变量
 
-Log remote-user
-```
-dufs --log-format '$remote_addr $remote_user "$request" $status' -a /@admin:admin -a /folder1@user1:pass1
-```
-```
-2022-08-06T07:04:37+08:00 INFO - 127.0.0.1 admin "GET /" 200
-```
+所有选项都可以通过 `DUFS_` 前缀的环境变量设置。
 
-## Environment variables
-
-All options can be set using environment variables prefixed with `DUFS_`.
-
-```
+```text
 [serve-path]                DUFS_SERVE_PATH="."
     --config <file>         DUFS_CONFIG=config.yaml
 -b, --bind <addrs>          DUFS_BIND=0.0.0.0
 -p, --port <port>           DUFS_PORT=5000
     --path-prefix <path>    DUFS_PATH_PREFIX=/dufs
     --hidden <value>        DUFS_HIDDEN=tmp,*.log,*.lock
--a, --auth <rules>          DUFS_AUTH="admin:admin@/:rw|@/" 
+-a, --auth <rules>          DUFS_AUTH="admin:admin@/:rw|@/"
 -A, --allow-all             DUFS_ALLOW_ALL=true
     --allow-upload          DUFS_ALLOW_UPLOAD=true
     --allow-delete          DUFS_ALLOW_DELETE=true
@@ -367,11 +394,9 @@ All options can be set using environment variables prefixed with `DUFS_`.
     --tls-key <path>        DUFS_TLS_KEY=key.pem
 ```
 
-## Configuration File
+### 配置文件
 
-You can specify and use the configuration file by selecting the option `--config <path-to-config.yaml>`.
-
-The following are the configuration items:
+可以通过 `--config <path-to-config.yaml>` 指定配置文件。
 
 ```yaml
 serve-path: '.'
@@ -385,7 +410,7 @@ hidden:
 auth:
   - admin:admin@/:rw
   - user:pass@/src:rw,/share
-  - '@/'  # According to the YAML spec, quoting is required.
+  - '@/'
 allow-all: false
 allow-upload: true
 allow-delete: true
@@ -405,31 +430,29 @@ tls-cert: tests/data/cert.pem
 tls-key: tests/data/key_pkcs1.pem
 ```
 
-### Customize UI
+### 自定义 UI
 
-Dufs allows users to customize the UI with your own assets.
+Dufs 支持通过自己的前端资源目录自定义 UI。
 
-```
+```sh
 dufs --assets my-assets-dir/
 ```
 
-> If you only need to make slight adjustments to the current UI, you copy dufs's [assets](https://github.com/sigoden/dufs/tree/main/assets) directory and modify it accordingly. The current UI doesn't use any frameworks, just plain HTML/JS/CSS. As long as you have some basic knowledge of web development, it shouldn't be difficult to modify.
+自定义资源目录必须包含 `index.html` 文件。
 
-Your assets folder must contains a `index.html` file.
+`index.html` 可以使用以下占位变量读取内部数据：
 
-`index.html` can use the following placeholder variables to retrieve internal data.
+- `__INDEX_DATA__`：目录列表数据
+- `__ASSETS_PREFIX__`：前端资源 URL 前缀
 
-- `__INDEX_DATA__`: directory listing data
-- `__ASSETS_PREFIX__`: assets url prefix
-
-> A customized 404.html page is also supported.
+也支持自定义 `404.html` 页面。
 
 </details>
 
-## License
+## 许可证
 
 Copyright (c) 2022-2024 dufs-developers.
 
-dufs is made available under the terms of either the MIT License or the Apache License 2.0, at your option.
+Dufs 可以在 MIT License 或 Apache License 2.0 中任选其一使用。
 
-See the LICENSE-APACHE and LICENSE-MIT files for license details.
+许可证详情见 `LICENSE-APACHE` 和 `LICENSE-MIT`。
