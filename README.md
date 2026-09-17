@@ -1,14 +1,59 @@
-# Dufs
+<div align="center">
+  <img src="./docs/logo/logo.svg" alt="Dufs logo" width="80" />
+  <h1>Dufs 中文增强版</h1>
+  <p>轻量级网页文件管理器与 WebDAV 服务器 · 中文优先界面</p>
+  <p>基于 <a href="https://github.com/sigoden/dufs">sigoden/dufs</a> 二次开发，单文件静态二进制、零运行时依赖，Docker 一条命令即可运行。</p>
+  <p>
+    <img src="https://img.shields.io/badge/Rust-0.46.0-DEA584?style=for-the-badge&logo=rust&logoColor=white" alt="Rust" />
+    <img src="https://img.shields.io/badge/Docker-amd64%20%7C%20arm64-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
+    <img src="https://img.shields.io/github/stars/JunWan666/dufs?style=for-the-badge&logo=github" alt="GitHub stars" />
+    <img src="https://img.shields.io/badge/License-MIT%20%7C%20Apache--2.0-111827?style=for-the-badge" alt="License" />
+  </p>
+  <p>
+    <img src="https://img.shields.io/badge/WebDAV-支持-0F9F6E?style=flat-square" alt="WebDAV" />
+    <img src="https://img.shields.io/badge/中文界面-原生-2563EB?style=flat-square" alt="中文界面" />
+    <img src="https://img.shields.io/badge/拖拽上传-范围提示-5B9BFF?style=flat-square" alt="拖拽上传" />
+    <img src="https://img.shields.io/badge/移动端-响应式-12A781?style=flat-square" alt="响应式" />
+    <img src="https://img.shields.io/badge/镜像体积-9.7MB-687388?style=flat-square" alt="镜像体积" />
+  </p>
+</div>
 
-Dufs 是一个轻量级的网页文件管理器和 WebDAV 服务器，支持静态文件服务、上传下载、搜索、访问控制、文件编辑、目录打包下载、断点传输、HTTPS 和 WebDAV。
+## 项目简介
 
-当前版本包含一套中文优先的新 UI：登录弹窗、权限状态、文件操作、路径导航、复制访问链接、编辑器工具栏等交互都做了重新整理。
+Dufs 可以把任意目录变成一个网页文件服务器：浏览器里直接浏览、上传、搜索、编辑、打包下载，也可以作为 WebDAV 网盘挂载到系统里使用。
+
+本仓库是 Dufs 的中文增强版，在官方 `0.46.0` 的基础上重做了整套中文优先界面，并补充了拖拽上传提示层等交互细节。程序编译为单个静态二进制，镜像体积仅约 `9.7 MB`，没有运行时依赖，非常适合放进家庭 NAS、内网服务器或随身小主机。
+
+## 界面预览
+
+<table>
+  <tr>
+    <td align="center"><strong>文件列表</strong><br><img src="./docs/images/index-desktop.png" alt="文件列表" width="290" /></td>
+    <td align="center"><strong>拖拽上传提示</strong><br><img src="./docs/images/drag-overlay.png" alt="拖拽上传提示" width="290" /></td>
+    <td align="center"><strong>登录</strong><br><img src="./docs/images/login-dialog.png" alt="登录弹窗" width="290" /></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>访客只读视图</strong><br><img src="./docs/images/guest-view.png" alt="访客只读视图" width="290" /></td>
+    <td align="center"><strong>新建文件夹</strong><br><img src="./docs/images/new-folder-dialog.png" alt="新建文件夹" width="290" /></td>
+    <td align="center"><strong>移动端</strong><br><img src="./docs/images/mobile-index.png" alt="移动端" width="140" /></td>
+  </tr>
+</table>
+
+## 与上游的差异
+
+| 项目 | 上游 dufs | 本仓库 |
+| --- | --- | --- |
+| 界面语言 | 英文 | 中文优先，可切换中 / 英 |
+| 界面风格 | 原生简洁 | 重新设计：卡片式布局、顶部工具栏、路径导航、权限状态徽章 |
+| 拖拽上传 | 支持，无视觉反馈 | 支持，拖入页面时显示全屏范围提示层，并标明目标目录 |
+| 交互细节 | — | 登录弹窗、复制访问链接、编辑器工具栏、Toast 提示、移动端重排 |
+| 分发方式 | GitHub Release 二进制 | 额外提供多架构 Docker 镜像（`linux/amd64`、`linux/arm64`） |
 
 ## 功能特性
 
 - 静态文件浏览和下载
 - 文件夹打包为 zip 下载
-- 上传文件和文件夹，支持拖拽上传
+- 上传文件和文件夹，支持拖拽上传（拖入页面时显示范围提示与目标目录）
 - 创建、编辑、搜索文件
 - 断点上传和断点下载
 - 账号访问控制
@@ -448,6 +493,12 @@ dufs --assets my-assets-dir/
 也支持自定义 `404.html` 页面。
 
 </details>
+
+## 致谢
+
+- 上游项目：[sigoden/dufs](https://github.com/sigoden/dufs)。本仓库基于其 `0.46.0` 版本二次开发，感谢原作者与所有贡献者。
+- 界面文案、图标与交互沿用上游的 MIT / Apache-2.0 授权，二次开发的部分同样遵循该授权。
+- 本项目的中文界面、拖拽上传提示层等改动由 [@JunWan666](https://github.com/JunWan666) 维护。
 
 ## 许可证
 

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96" role="img" aria-label="Dufs">
+  <defs>
+    <linearGradient id="dufsBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5b9bff" />
+      <stop offset="100%" stop-color="#1d4ed8" />
+    </linearGradient>
+    <linearGradient id="dufsSheet" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#e8f0ff" />
+    </linearGradient>
+  </defs>
+
+  <rect x="3" y="3" width="90" height="90" rx="23" fill="url(#dufsBg)" />
+  <rect x="3" y="3" width="90" height="90" rx="23" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.5" />
+
+  <!-- 文件夹 -->
+  <path d="M19 33h17.2l5.4 6.4H77a5.5 5.5 0 0 1 5.5 5.5v19.6A5.5 5.5 0 0 1 77 70H19a5.5 5.5 0 0 1-5.5-5.5V38.5A5.5 5.5 0 0 1 19 33z"
+        fill="url(#dufsSheet)" />
+
+  <!-- 上传箭头 -->
+  <path d="M48 63.5V46.5" stroke="#1d4ed8" stroke-width="4.6" stroke-linecap="round" />
+  <path d="M39.6 54.4 48 46l8.4 8.4" stroke="#1d4ed8" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+</svg>
