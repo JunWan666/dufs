@@ -990,3 +990,107 @@ body[data-kind="view"] .toolbox-right {
     display: none;
   }
 }
+
+
+/* ===== 拖拽上传提示层 ===== */
+.drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  background: rgba(37, 99, 235, 0.07);
+  pointer-events: none;
+  animation: dropOverlayFade 0.15s ease-out both;
+}
+
+.drop-overlay::before {
+  content: "";
+  position: absolute;
+  inset: 14px;
+  border: 2px dashed rgba(37, 99, 235, 0.42);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.42);
+  animation: dropOverlayPulse 1.6s ease-in-out infinite;
+}
+
+.drop-overlay-frame {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  max-width: 84vw;
+  padding: 20px 30px;
+  border-radius: 14px;
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.14);
+  text-align: center;
+}
+
+.drop-overlay-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 6px;
+  border-radius: 50%;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.drop-overlay-title {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.drop-overlay-desc {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.drop-overlay-hint {
+  color: var(--muted-2);
+  font-size: 12px;
+}
+
+.drop-overlay-path {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 70vw;
+  margin-top: 10px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel-soft);
+  color: var(--muted);
+}
+
+.drop-overlay-path b {
+  color: var(--accent-strong);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes dropOverlayFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dropOverlayPulse {
+  0%, 100% { border-color: rgba(37, 99, 235, 0.42); }
+  50% { border-color: rgba(37, 99, 235, 0.75); }
+}
+
+@media (max-width: 640px) {
+  .drop-overlay-frame { padding: 16px 20px; }
+  .drop-overlay-title { font-size: 15px; }
+}

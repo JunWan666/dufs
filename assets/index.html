@@ -173,6 +173,24 @@
     </main>
   </div>
 
+  <div class="drop-overlay hidden" id="drop-overlay" aria-hidden="true">
+    <div class="drop-overlay-frame">
+      <div class="drop-overlay-badge">
+        <svg width="18" height="18" viewBox="0 0 16 16">
+          <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z" />
+          <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z" />
+        </svg>
+      </div>
+      <div class="drop-overlay-title" id="drop-overlay-title">松开鼠标即可上传</div>
+      <div class="drop-overlay-desc" id="drop-overlay-desc">文件将保存到当前目录</div>
+      <div class="drop-overlay-path">
+        <svg width="13" height="13" viewBox="0 0 14 16"><path fill-rule="evenodd" d="M13 4H7V3c0-.66-.31-1-1-1H1c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1V5c0-.55-.45-1-1-1zM6 4H1V3h5v1z"></path></svg>
+        <b id="drop-overlay-path">/</b>
+      </div>
+      <div class="drop-overlay-hint" id="drop-overlay-hint">支持文件与整个文件夹</div>
+    </div>
+  </div>
+
   <div class="dialog-layer hidden" id="dialog-layer" aria-hidden="true"></div>
   <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
 

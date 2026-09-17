@@ -130,6 +130,9 @@ const I18N = {
     root: "根目录",
     item: "项",
     items: "项",
+    dropUploadTitle: "松开鼠标即可上传",
+    dropUploadDesc: "文件将保存到当前目录",
+    dropUploadHint: "支持文件与整个文件夹",
   },
   "en-US": {
     noData: "No data",
@@ -212,6 +215,9 @@ const I18N = {
     root: "Root",
     item: "item",
     items: "items",
+    dropUploadTitle: "Release to upload",
+    dropUploadDesc: "Files will be saved to the current folder",
+    dropUploadHint: "Files and folders are supported",
   },
 };
 
@@ -1066,19 +1072,86 @@ function setupDropzone() {
       e.stopPropagation();
     });
   });
+
+  const overlay = document.getElementById("drop-overlay");
+  if (!overlay) return;
+
+  const $overlayPath = document.getElementById("drop-overlay-path");
+  document.getElementById("drop-overlay-title").textContent = t("dropUploadTitle");
+  document.getElementById("drop-overlay-desc").textContent = t("dropUploadDesc");
+  document.getElementById("drop-overlay-hint").textContent = t("dropUploadHint");
+  $overlayPath.textContent = decodeURIComponent(DATA.href || "/");
+
+  let dragDepth = 0;
+
+  function isFileDrag(e) {
+    const dt = e.dataTransfer;
+    if (!dt) return false;
+    if (dt.types && Array.from(dt.types).indexOf("Files") !== -1) return true;
+    if (dt.items && dt.items.length && dt.items[0].kind === "file") return true;
+    return false;
+  }
+
+  function showOverlay() {
+    overlay.classList.remove("hidden");
+    overlay.setAttribute("aria-hidden", "false");
+  }
+
+  function hideOverlay() {
+    overlay.classList.add("hidden");
+    overlay.setAttribute("aria-hidden", "true");
+  }
+
+  document.addEventListener("dragenter", e => {
+    if (!isFileDrag(e)) return;
+    dragDepth += 1;
+    showOverlay();
+  });
+
+  document.addEventListener("dragover", e => {
+    if (!isFileDrag(e)) return;
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+    if (overlay.classList.contains("hidden")) showOverlay();
+  });
+
+  document.addEventListener("dragleave", e => {
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (dragDepth === 0 || !e.relatedTarget) {
+      dragDepth = 0;
+      hideOverlay();
+    }
+  });
+
+  document.addEventListener("dragend", () => {
+    dragDepth = 0;
+    hideOverlay();
+  });
+
   document.addEventListener("drop", async e => {
-    if (!e.dataTransfer.items[0].webkitGetAsEntry) {
+    dragDepth = 0;
+    hideOverlay();
+    if (!e.dataTransfer) return;
+    if (!e.dataTransfer.items[0] || !e.dataTransfer.items[0].webkitGetAsEntry) {
       const files = Array.from(e.dataTransfer.files).filter(v => v.size > 0);
       for (const file of files) {
         new Uploader(file, []).upload();
       }
     } else {
+      const items = e.dataTransfer.items;
       const entries = [];
-      const len = e.dataTransfer.items.length;
-      for (let i = 0; i < len; i++) {
-        entries.push(e.dataTransfer.items[i].webkitGetAsEntry());
+      for (let i = 0; i < items.length; i++) {
+        const entry = items[i].webkitGetAsEntry && items[i].webkitGetAsEntry();
+        if (entry) entries.push(entry);
       }
-      addFileEntries(entries, []);
+      if (entries.length) {
+        addFileEntries(entries, []);
+      } else {
+        // 个别浏览器/场景下拿不到 entry，退回普通文件上传，避免静默失败
+        const files = Array.from(e.dataTransfer.files).filter(v => v.size > 0);
+        for (const file of files) {
+          new Uploader(file, []).upload();
+        }
+      }
     }
   });
 }
