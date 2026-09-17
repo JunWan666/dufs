@@ -1,6 +1,34 @@
-# Dufs
+# Dufs 中文增强版
 
-Dufs 是一个轻量级的网页文件管理器和 WebDAV 服务器。这个镜像包含重新设计的中文优先 UI，支持基于账号的访问控制、上传下载、文件编辑、目录打包下载、搜索、TLS 以及 WebDAV 操作。
+**轻量级网页文件管理器与 WebDAV 服务器 · 中文优先界面**
+
+基于 [sigoden/dufs](https://github.com/sigoden/dufs) 二次开发，重做了整套中文界面，新增拖拽上传范围提示等交互优化。程序编译为单个静态二进制，镜像基于 `scratch`，零运行时依赖。
+
+![Rust](https://img.shields.io/badge/Rust-0.46.0-DEA584?style=for-the-badge&logo=rust&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-amd64%20%7C%20arm64-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT%20%7C%20Apache--2.0-111827?style=for-the-badge)
+
+![WebDAV](https://img.shields.io/badge/WebDAV-支持-0F9F6E?style=flat-square)
+![中文界面](https://img.shields.io/badge/中文界面-原生-2563EB?style=flat-square)
+![拖拽上传](https://img.shields.io/badge/拖拽上传-范围提示-5B9BFF?style=flat-square)
+![移动端](https://img.shields.io/badge/移动端-响应式-12A781?style=flat-square)
+![镜像体积](https://img.shields.io/badge/镜像体积-9.7MB-687388?style=flat-square)
+
+## 界面预览
+
+文件列表：卡片式布局、顶部工具栏、路径导航与权限状态徽章。
+
+![文件列表](https://raw.githubusercontent.com/JunWan666/dufs/main/docs/images/index-desktop.png)
+
+拖拽上传：把文件拖进浏览器窗口时，页面会显示浅色范围提示层，并标明文件将保存到哪个目录。
+
+![拖拽上传提示](https://raw.githubusercontent.com/JunWan666/dufs/main/docs/images/drag-overlay.png)
+
+移动端与登录：窄屏自动重排，登录弹窗支持管理员与访客账号。
+
+![移动端](https://raw.githubusercontent.com/JunWan666/dufs/main/docs/images/mobile-index.png)
+
+更多界面截图与完整文档见 GitHub 仓库：<https://github.com/JunWan666/dufs>
 
 ## 支持架构
 
@@ -12,7 +40,7 @@ Dufs 是一个轻量级的网页文件管理器和 WebDAV 服务器。这个镜�
 ## 镜像标签
 
 - `tannic666/dufs:latest`
-- `tannic666/dufs:v1.0.0`
+- `tannic666/dufs:v1.0.1`
 
 ## 快速开始
 
@@ -35,6 +63,8 @@ http://127.0.0.1:5000/
 ```sh
 docker run --rm -p 5000:5000 -v "$PWD:/data" tannic666/dufs:latest /data -A
 ```
+
+启用后即可使用顶部工具栏上传文件，或直接把文件拖入浏览器窗口上传（拖拽时页面会显示目标目录提示）。
 
 ## 使用登录账号
 
@@ -107,3 +137,4 @@ curl http://127.0.0.1:5000/__dufs__/health
 - 容器入口命令是 `/bin/dufs`。
 - 镜像基于 `scratch`，仅包含静态链接后的可执行文件。
 - 使用 `-v` 将需要共享的目录挂载到容器内。
+- 二次开发部分与上游一致，遵循 MIT / Apache-2.0 授权。
