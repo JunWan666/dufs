@@ -138,6 +138,11 @@ impl Server {
 
     /// 首次访问初始化：从数据目录读取已保存的管理员账号（命令行 -a / 配置文件优先）
     fn load_admin_credentials(args: &mut Args) -> Result<()> {
+        // 凭据文件始终不出现在列表里
+        if !args.hidden.iter().any(|v| v == ADMIN_CONFIG_FILE) {
+            args.hidden.push(ADMIN_CONFIG_FILE.to_string());
+        }
+        // 命令行 / 环境变量已配置账号时不读凭据文件
         if args.auth.has_users() {
             return Ok(());
         }
@@ -156,9 +161,6 @@ impl Server {
         }
         let refs: Vec<&str> = rules.iter().map(|v| v.as_str()).collect();
         args.auth = AccessControl::new(&refs)?;
-        if !args.hidden.iter().any(|v| v == ADMIN_CONFIG_FILE) {
-            args.hidden.push(ADMIN_CONFIG_FILE.to_string());
-        }
         Ok(())
     }
 
@@ -2083,6 +2085,10 @@ fn set_content_disposition(res: &mut Response, inline: bool, filename: &str) -> 
 }
 
 fn is_hidden(hidden: &[String], file_name: &str, is_dir: bool) -> bool {
+    // 账号凭据文件永远不在列表中显示（无论是否通过命令行配置账号、是否刚初始化）
+    if file_name == ADMIN_CONFIG_FILE {
+        return true;
+    }
     hidden.iter().any(|v| {
         if is_dir {
             if let Some(x) = v.strip_suffix('/') {
