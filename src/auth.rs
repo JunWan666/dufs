@@ -20,6 +20,9 @@ const REALM: &str = "DUFS";
 const DIGEST_AUTH_TIMEOUT: u32 = 60 * 60 * 24 * 7; // 7 days
 const TOKEN_EXPIRATION: u64 = 1000 * 60 * 60 * 24 * 3; // 3 days
 
+/// 会话 Cookie 有效期（秒）：7 天
+pub const SESSION_TOKEN_EXPIRATION_SECS: u64 = 60 * 60 * 24 * 7;
+
 lazy_static! {
     static ref NONCESTARTHASH: Context = {
         let mut h = Context::new();
@@ -184,6 +187,47 @@ impl AccessControl {
         raw.extend_from_slice(user.as_bytes());
 
         Ok(hex::encode(raw))
+    }
+
+    /// 生成会话令牌（Cookie 登录用）：绑定用户与过期时间，不绑定具体路径
+    pub fn generate_session_token(&self, user: &str) -> Result<String> {
+        let (pass, _) = self
+            .users
+            .get(user)
+            .ok_or_else(|| anyhow!("Not found user '{user}'"))?;
+        let exp = unix_now().as_millis() as u64 + SESSION_TOKEN_EXPIRATION_SECS * 1000;
+        let message = format!("session:{exp}");
+        let mut signing_key = derive_secret_key(user, pass);
+        let sig = signing_key.sign(message.as_bytes()).to_bytes();
+
+        let mut raw = Vec::with_capacity(64 + 8 + user.len());
+        raw.extend_from_slice(&sig);
+        raw.extend_from_slice(&exp.to_be_bytes());
+        raw.extend_from_slice(user.as_bytes());
+        Ok(hex::encode(raw))
+    }
+
+    /// 校验会话令牌，成功返回 (用户名, 权限)
+    pub fn verify_session_token(&self, token: &str) -> Option<(String, AccessPaths)> {
+        let raw = hex::decode(token).ok()?;
+        if raw.len() < 72 {
+            return None;
+        }
+        let sig_bytes = &raw[..64];
+        let exp_bytes = &raw[64..72];
+        let user_bytes = &raw[72..];
+        let exp = u64::from_be_bytes(exp_bytes.try_into().ok()?);
+        if unix_now().as_millis() as u64 > exp {
+            return None;
+        }
+        let user = std::str::from_utf8(user_bytes).ok()?;
+        let (pass, paths) = self.users.get(user)?;
+        let sig = Signature::from_bytes(&<[u8; 64]>::try_from(sig_bytes).ok()?);
+        let message = format!("session:{exp}");
+        derive_secret_key(user, pass)
+            .verify(message.as_bytes(), &sig)
+            .ok()?;
+        Some((user.to_string(), paths.clone()))
     }
 
     fn verify_token<'a>(&'a self, token: &str, path: &str) -> Result<(String, &'a AccessPaths)> {

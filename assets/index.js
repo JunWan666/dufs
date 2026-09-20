@@ -1845,8 +1845,14 @@ async function checkAuth(variant, options = {}) {
   if (avatar) avatar.textContent = ($userName.textContent || t("guest")).slice(0, 1).toUpperCase();
 }
 
-function logout() {
+async function logout() {
   if (!DATA.auth) return;
+  try {
+    // 通知服务端清除会话 Cookie，否则浏览器直接导航时仍会被视为已登录
+    await authFetch(baseUrl(), { method: "LOGOUT" });
+  } catch (err) {
+    // 忽略：即使失败也继续清理本地状态
+  }
   clearStoredAuth();
   showToast("success", t("signedOut"));
   location.href = baseUrl();

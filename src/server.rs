@@ -67,6 +67,7 @@ const RESUMABLE_UPLOAD_MIN_SIZE: u64 = 20971520; // 20M
 const HEALTH_CHECK_PATH: &str = "__dufs__/health";
 const ADMIN_SETUP_PATH: &str = "__dufs__/admin";
 const ADMIN_SETTINGS_PATH: &str = "__dufs__/admin/settings";
+const SESSION_COOKIE_NAME: &str = "dufs_session";
 const ADMIN_CONFIG_FILE: &str = ".dufs-admin.json";
 pub const MAX_SUBPATHS_COUNT: u64 = 1000;
 
@@ -282,18 +283,42 @@ impl Server {
             .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect();
 
-        let guard = self.auth.read().unwrap().guard(
-            &relative_path,
-            &method,
-            authorization,
-            query_params.get("token"),
-            is_microsoft_webdav,
-        );
+        // 会话 Cookie：浏览器直接导航（打开目录、刷新页面）不会带 Authorization 头，
+        // 靠登录时下发的签名 Cookie 保持登录态，避免弹出浏览器原生账号框。
+        let session = if authorization.is_none() {
+            headers
+                .get(hyper::header::COOKIE)
+                .and_then(|value| value.to_str().ok())
+                .and_then(|cookies| extract_cookie(cookies, SESSION_COOKIE_NAME))
+                .and_then(|token| self.auth.read().unwrap().verify_session_token(&token))
+        } else {
+            None
+        };
+
+        let guard = match session {
+            Some((session_user, paths)) => (Some(session_user), Some(paths)),
+            None => self.auth.read().unwrap().guard(
+                &relative_path,
+                &method,
+                authorization,
+                query_params.get("token"),
+                is_microsoft_webdav,
+            ),
+        };
 
         let (user, access_paths) = match guard {
             (None, None) => {
-                self.auth_reject(&mut res)?;
-                return Ok(res);
+                // 「仅公开目录」模式下，允许匿名通过完整链接直接读取具体文件（方便分享直链），
+                // 但目录本身仍需要权限，所以访客无法浏览目录结构。
+                if (method == Method::GET || method == Method::HEAD)
+                    && self.auth.read().unwrap().anonymous_root_is_index_only()
+                    && self.is_file_path(&relative_path).await
+                {
+                    (None, Some(AccessPaths::new(AccessPerm::ReadOnly)))
+                } else {
+                    self.auth_reject(&mut res)?;
+                    return Ok(res);
+                }
             }
             (Some(_), None) => {
                 status_forbid(&mut res);
@@ -327,6 +352,16 @@ impl Server {
         if method.as_str() == "CHECKAUTH" {
             match user.clone() {
                 Some(user) => {
+                    // 下发会话 Cookie：之后浏览器直接打开目录/刷新都会自动携带身份
+                    if let Ok(token) = self.auth.read().unwrap().generate_session_token(&user) {
+                        let cookie = format!(
+                            "{SESSION_COOKIE_NAME}={token}; Path=/; Max-Age={}; HttpOnly; SameSite=Lax",
+                            crate::auth::SESSION_TOKEN_EXPIRATION_SECS
+                        );
+                        if let Ok(value) = HeaderValue::from_str(&cookie) {
+                            res.headers_mut().append(hyper::header::SET_COOKIE, value);
+                        }
+                    }
                     *res.body_mut() = body_full(user);
                 }
                 None => {
@@ -339,6 +374,11 @@ impl Server {
             }
             return Ok(res);
         } else if method.as_str() == "LOGOUT" {
+            let cookie =
+                format!("{SESSION_COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax");
+            if let Ok(value) = HeaderValue::from_str(&cookie) {
+                res.headers_mut().append(hyper::header::SET_COOKIE, value);
+            }
             self.auth_reject(&mut res)?;
             return Ok(res);
         }
@@ -906,6 +946,17 @@ impl Server {
         }
         status_not_found(res);
         Ok(())
+    }
+
+    /// 判断相对路径是否指向一个已存在的具体文件
+    async fn is_file_path(&self, relative_path: &str) -> bool {
+        match self.join_path(relative_path) {
+            Some(path) => fs::metadata(&path)
+                .await
+                .map(|meta| meta.is_file())
+                .unwrap_or(false),
+            None => false,
+        }
     }
 
     /// 读取并解析 JSON 请求体（限制 4KB）
@@ -2219,6 +2270,14 @@ fn set_content_disposition(res: &mut Response, inline: bool, filename: &str) -> 
     };
     res.headers_mut().insert(CONTENT_DISPOSITION, value);
     Ok(())
+}
+
+/// 从 Cookie 请求头里取出指定名称的值
+fn extract_cookie(cookies: &str, name: &str) -> Option<String> {
+    cookies.split(';').find_map(|part| {
+        let (key, value) = part.trim().split_once('=')?;
+        (key.trim() == name).then(|| value.trim().to_string())
+    })
 }
 
 fn is_hidden(hidden: &[String], file_name: &str, is_dir: bool) -> bool {
