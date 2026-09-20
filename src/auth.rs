@@ -113,6 +113,15 @@ impl AccessControl {
         !self.users.is_empty()
     }
 
+    /// 是否处于「匿名只能访问部分子目录」模式：
+    /// 匿名对根路径仅有索引权限，且存在被授权的子目录（例如 @/public）
+    pub fn anonymous_root_is_index_only(&self) -> bool {
+        match &self.anonymous {
+            Some(paths) => paths.perm().indexonly() && !paths.child_names().is_empty(),
+            None => false,
+        }
+    }
+
     pub fn guard(
         &self,
         path: &str,

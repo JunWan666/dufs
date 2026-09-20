@@ -302,6 +302,24 @@ impl Server {
             (x, Some(y)) => (x, y),
         };
 
+        // 「仅公开目录」模式下，匿名访客打开站点根路径时直接引导到公开目录，
+        // 否则会看到一个空列表（因为根路径下的内容它没有权限）
+        if user.is_none()
+            && method == Method::GET
+            && relative_path.is_empty()
+            && !query_params.contains_key("json")
+            && self.auth.read().unwrap().anonymous_root_is_index_only()
+        {
+            let location = format!("{}public/", self.args.uri_prefix);
+            res.headers_mut().insert(
+                hyper::header::LOCATION,
+                HeaderValue::from_str(&location)
+                    .map_err(|err| anyhow!("invalid location {location}: {err}"))?,
+            );
+            *res.status_mut() = StatusCode::FOUND;
+            return Ok(res);
+        }
+
         // 管理员账号接口：初始化 / 修改密码 / 访问设置（均在鉴权之后处理）
         if method == Method::PUT && relative_path == ADMIN_SETUP_PATH {
             self.handle_admin_setup(req, &mut res, user.clone()).await?;
