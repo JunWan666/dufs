@@ -562,7 +562,12 @@ function openLoginDialog() {
         await checkAuth("login", { prompt: false });
         showToast("success", t("signedIn"), `${t("signedInAs")}${user}`);
         finish(true);
-        location.reload();
+        // 从游客目录（/public）登录管理员时回到根目录，否则原地刷新
+        if (DATA.href === "/public/" || DATA.href.startsWith("/public/")) {
+          location.href = dufsEndpoint("");
+        } else {
+          location.reload();
+        }
       } catch {
         clearStoredAuth();
         error.textContent = t("authFailed");
@@ -1720,13 +1725,7 @@ async function setupAuth() {
     setupSettingsButton();
   } else {
     $loginBtn.classList.remove("hidden");
-    $loginBtn.addEventListener("click", async () => {
-      const ok = await openLoginDialog();
-      // 从游客目录（/public）登录管理员时，回到根目录以浏览全部内容
-      if (ok && (DATA.href === "/public/" || DATA.href.startsWith("/public/"))) {
-        location.href = dufsEndpoint("");
-      }
-    });
+    $loginBtn.addEventListener("click", () => openLoginDialog());
   }
 }
 
@@ -2042,10 +2041,6 @@ async function checkAuth(variant, options = {}) {
   if (!getAuthHeader() && options.prompt !== false) {
     const ok = await openLoginDialog();
     if (!ok) throw new Error(t("authFailed"));
-    // 从游客目录登录管理员时回到根目录
-    if (DATA.href === "/public/" || DATA.href.startsWith("/public/")) {
-      location.href = dufsEndpoint("");
-    }
     return;
   }
   const qs = variant ? `?${variant}` : "";
