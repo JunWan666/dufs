@@ -1069,12 +1069,183 @@ function addPath(file, index) {
 </tr>`);
 }
 
-/** 已登录时提供「修改密码」入口（仅网页初始化创建的账号可改） */
-function setupAccountButton() {
-  const btn = document.querySelector(".account-btn");
+/** 统一构造后端管理接口地址（不受当前所在目录影响） */
+function dufsEndpoint(relPath) {
+  const prefix = DATA.uri_prefix || "/";
+  return new URL(
+    prefix.replace(/\/?$/, "/") + String(relPath).replace(/^\//, ""),
+    location.origin
+  ).toString();
+}
+
+/** 账号抽屉菜单：修改密码 / 设置 / 退出登录 */
+function setupUserMenu() {
+  const menu = document.getElementById("user-menu");
+  if (!menu) return;
+
+  const initial = (DATA.user || "?").slice(0, 1).toUpperCase();
+  const $menuAvatar = document.querySelector(".user-menu-avatar");
+  if ($menuAvatar) $menuAvatar.textContent = initial;
+  const $menuName = document.querySelector(".user-menu-name");
+  if ($menuName) $menuName.textContent = DATA.user || "";
+
+  const closeMenu = () => menu.classList.add("hidden");
+
+  $logoutBtn.addEventListener("click", event => {
+    event.stopPropagation();
+    menu.classList.toggle("hidden");
+  });
+  menu.addEventListener("click", event => event.stopPropagation());
+  document.addEventListener("click", closeMenu);
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape") closeMenu();
+  });
+
+  const bind = (action, handler) => {
+    const el = menu.querySelector(`[data-action='${action}']`);
+    if (el) {
+      el.addEventListener("click", () => {
+        closeMenu();
+        handler();
+      });
+    }
+  };
+  bind("password", openPasswordDialog);
+  bind("settings", openSettingsDialog);
+  bind("logout", logout);
+}
+
+/** 工具栏「设置」按钮 */
+function setupSettingsButton() {
+  const btn = document.querySelector(".settings-btn");
   if (!btn) return;
   btn.classList.remove("hidden");
-  btn.addEventListener("click", openPasswordDialog);
+  btn.addEventListener("click", openSettingsDialog);
+}
+
+/** 设置页：访客访问权限 + 账号 + 服务信息 */
+async function openSettingsDialog() {
+  const layer = document.getElementById("dialog-layer");
+  layer.innerHTML = dialogShell({
+    title: "设置",
+    desc: "访客访问权限与账号管理",
+    body: `<div class="settings-body" id="settings-body"><p class="settings-hint">正在读取设置…</p></div>`,
+    actions: `<button class="btn" type="button" data-action="close">关闭</button>`,
+  });
+  layer.classList.remove("hidden");
+  layer.setAttribute("aria-hidden", "false");
+  const finish = () => closeDialog();
+  layer.querySelector(".dialog-close").addEventListener("click", finish);
+  layer.querySelector("[data-action='close']").addEventListener("click", finish);
+  layer.addEventListener("keydown", event => {
+    if (event.key === "Escape") finish();
+  });
+
+  const $body = document.getElementById("settings-body");
+  const endpoint = dufsEndpoint("__dufs__/admin/settings");
+
+  let settings;
+  try {
+    const res = await authFetch(endpoint);
+    if (!res.ok) {
+      throw new Error(
+        res.status === 403 ? "该账号由启动参数或配置文件提供，网页无法修改设置" : `HTTP ${res.status}`
+      );
+    }
+    settings = await res.json();
+  } catch (err) {
+    $body.innerHTML = `<p class="settings-error">读取设置失败：${encodedStr(err.message || "未知错误")}</p>`;
+    return;
+  }
+
+  $body.innerHTML = `
+    <section class="settings-section">
+      <h3 class="settings-title">访客访问权限</h3>
+      <p class="settings-hint">未登录的访客可以访问的范围（修改后立即生效）：</p>
+      <label class="settings-radio"><input type="radio" name="scope" value="all"><span>全站只读 —— 所有文件都能被浏览和下载</span></label>
+      <label class="settings-radio"><input type="radio" name="scope" value="public"><span>仅公开目录 <code>/public</code>（推荐）</span></label>
+      <label class="settings-radio"><input type="radio" name="scope" value="none"><span>完全禁止 —— 访客必须登录才能访问</span></label>
+      <div class="settings-row">
+        <button class="btn btn-primary" type="button" id="create-public">一键创建公开目录</button>
+        <span class="settings-status" id="public-status"></span>
+      </div>
+      <p class="settings-hint">创建后会在 <code>/public</code> 里写入一份说明文件，游客和管理员都能一眼看懂这个目录的用途。</p>
+    </section>
+    <section class="settings-section">
+      <h3 class="settings-title">账号</h3>
+      <p class="settings-hint">当前账号：<b>${encodedStr(settings.user || "admin")}</b></p>
+      <button class="btn" type="button" id="open-password">修改密码</button>
+    </section>
+    <section class="settings-section">
+      <h3 class="settings-title">服务信息</h3>
+      <ul class="settings-meta">
+        <li>服务目录：<code>${encodedStr(settings.serve_path || "-")}</code></li>
+        <li>版本：${encodedStr(settings.version || "-")}</li>
+        <li>界面语言：${currentLang === "zh-CN" ? "中文" : "English"}</li>
+      </ul>
+    </section>
+  `;
+
+  // 回填当前范围
+  const radios = $body.querySelectorAll("input[name='scope']");
+  radios.forEach(radio => {
+    if (radio.value === (settings.anonymous_scope || "all")) radio.checked = true;
+    radio.addEventListener("change", async () => {
+      if (!radio.checked) return;
+      const status = document.getElementById("public-status");
+      try {
+        const res = await authFetch(endpoint, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ anonymous_scope: radio.value }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        showToast("success", "已保存", radio.value === "public" ? "访客现在只能看到 /public 目录" : "访客访问范围已更新");
+      } catch (err) {
+        showToast("error", "保存失败", err.message || "");
+      }
+    });
+  });
+
+  document.getElementById("open-password").addEventListener("click", () => {
+    closeDialog();
+    openPasswordDialog();
+  });
+
+  const $status = document.getElementById("public-status");
+  const readme = [
+    "这是公开目录",
+    "============",
+    "",
+    "· 访客无需登录即可浏览和下载本目录里的文件",
+    "· 请把需要分享给他人的文件放到这里",
+    "· 其他目录只有管理员登录后才能访问",
+    "",
+    "（本说明由 Dufs 自动创建，可以自由修改或删除）",
+  ].join("\n");
+
+  document.getElementById("create-public").addEventListener("click", async () => {
+    $status.textContent = "正在检查…";
+    try {
+      const headRes = await authFetch(dufsEndpoint("public/README.txt"), { method: "HEAD" });
+      if (headRes.ok) {
+        $status.textContent = "公开目录已存在 ✅";
+        return;
+      }
+      const res = await authFetch(dufsEndpoint("public/README.txt"), {
+        method: "PUT",
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+        body: readme,
+      });
+      if (!res.ok && res.status !== 201 && res.status !== 204) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      $status.textContent = "已创建 ✅";
+      showToast("success", "公开目录已创建", "/public/README.txt 已写入说明");
+    } catch (err) {
+      $status.textContent = "创建失败：" + (err.message || "未知错误");
+    }
+  });
 }
 
 /** 修改当前账号密码（写入数据目录，立即生效） */
@@ -1117,9 +1288,7 @@ function openPasswordDialog() {
     }
     $note.textContent = "正在保存…";
     try {
-      const prefix = DATA.uri_prefix || "/";
-      const endpoint = new URL(prefix.replace(/\/?$/, "/") + "__dufs__/admin", location.origin).toString();
-      const res = await authFetch(endpoint, {
+      const res = await authFetch(dufsEndpoint("__dufs__/admin"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
@@ -1207,9 +1376,7 @@ function openAdminSetupDialog() {
     }
     $note.textContent = "正在保存…";
     try {
-      const prefix = DATA.uri_prefix || "/";
-      const endpoint = new URL(prefix.replace(/\/?$/, "/") + "__dufs__/admin", location.origin).toString();
-      const res = await fetch(endpoint, {
+      const res = await fetch(dufsEndpoint("__dufs__/admin"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user, password, allow_anonymous_read: $anon.checked }),
@@ -1333,11 +1500,11 @@ function setupDropzone() {
 async function setupAuth() {
   if (DATA.user) {
     $logoutBtn.classList.remove("hidden");
-    $logoutBtn.addEventListener("click", logout);
     $userName.textContent = DATA.user;
     const avatar = document.querySelector(".user-avatar");
     if (avatar) avatar.textContent = DATA.user.slice(0, 1).toUpperCase();
-    setupAccountButton();
+    setupUserMenu();
+    setupSettingsButton();
   } else {
     $loginBtn.classList.remove("hidden");
     $loginBtn.addEventListener("click", () => openLoginDialog());

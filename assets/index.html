@@ -110,15 +110,35 @@
             </svg>
             <span>登录</span>
           </div>
-          <div class="account-btn hidden" title="修改登录密码">
-            <svg width="16" height="16" viewBox="0 0 16 16">
-              <path d="M4 7V5a4 4 0 0 1 8 0v2h.5A1.5 1.5 0 0 1 14 8.5v5A1.5 1.5 0 0 1 12.5 15h-9A1.5 1.5 0 0 1 2 13.5v-5A1.5 1.5 0 0 1 3.5 7H4zm2 0h4V5a2 2 0 1 0-4 0v2zm2 3.5a1 1 0 0 0-.5 1.87V14h1v-1.63A1 1 0 0 0 8 10.5z" />
-            </svg>
-            <span>修改密码</span>
+          <div class="settings-btn hidden" title="设置">
+            <svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/><path d="M13.3 9.3a1 1 0 0 0 .2 1.1l.04.04a1.2 1.2 0 1 1-1.7 1.7l-.04-.04a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.91V13a1.2 1.2 0 1 1-2.4 0v-.06a1 1 0 0 0-.65-.91 1 1 0 0 0-1.1.2l-.04.04a1.2 1.2 0 1 1-1.7-1.7l.04-.04a1 1 0 0 0 .2-1.1 1 1 0 0 0-.91-.6H3a1.2 1.2 0 1 1 0-2.4h.06a1 1 0 0 0 .91-.65 1 1 0 0 0-.2-1.1l-.04-.04a1.2 1.2 0 1 1 1.7-1.7l.04.04a1 1 0 0 0 1.1.2h.05a1 1 0 0 0 .6-.91V3a1.2 1.2 0 1 1 2.4 0v.06a1 1 0 0 0 .6.91 1 1 0 0 0 1.1-.2l.04-.04a1.2 1.2 0 1 1 1.7 1.7l-.04.04a1 1 0 0 0-.2 1.1v.05a1 1 0 0 0 .91.6H13a1.2 1.2 0 1 1 0 2.4h-.06a1 1 0 0 0-.91.6z"/></svg>
+            <span>设置</span>
           </div>
-          <div class="logout-btn hidden" title="退出登录">
-            <span class="user-avatar"></span>
-            <span class="user-name"></span>
+          <div class="user-menu-wrap">
+            <div class="logout-btn hidden" title="账号菜单">
+              <span class="user-avatar"></span>
+              <span class="user-name"></span>
+              <svg class="user-menu-caret" width="9" height="9" viewBox="0 0 16 16"><path d="M4 6.5 8 11l4-4.5z"/></svg>
+            </div>
+            <div class="user-menu hidden" id="user-menu">
+              <div class="user-menu-head">
+                <span class="user-menu-avatar"></span>
+                <div class="user-menu-info">
+                  <div class="user-menu-name"></div>
+                  <div class="user-menu-role">管理员 · 可读写</div>
+                </div>
+              </div>
+              <button class="user-menu-item" type="button" data-action="password">
+                <svg width="16" height="16" viewBox="0 0 16 16"><path d="M4 7V5a4 4 0 0 1 8 0v2h.5A1.5 1.5 0 0 1 14 8.5v5A1.5 1.5 0 0 1 12.5 15h-9A1.5 1.5 0 0 1 2 13.5v-5A1.5 1.5 0 0 1 3.5 7H4zm2 0h4V5a2 2 0 1 0-4 0v2zm2 3.5a1 1 0 0 0-.5 1.87V14h1v-1.63A1 1 0 0 0 8 10.5z"/></svg><span>修改密码</span>
+              </button>
+              <button class="user-menu-item" type="button" data-action="settings">
+                <svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/><path d="M13.3 9.3a1 1 0 0 0 .2 1.1l.04.04a1.2 1.2 0 1 1-1.7 1.7l-.04-.04a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.91V13a1.2 1.2 0 1 1-2.4 0v-.06a1 1 0 0 0-.65-.91 1 1 0 0 0-1.1.2l-.04.04a1.2 1.2 0 1 1-1.7-1.7l.04-.04a1 1 0 0 0 .2-1.1 1 1 0 0 0-.91-.6H3a1.2 1.2 0 1 1 0-2.4h.06a1 1 0 0 0 .91-.65 1 1 0 0 0-.2-1.1l-.04-.04a1.2 1.2 0 1 1 1.7-1.7l.04.04a1 1 0 0 0 1.1.2h.05a1 1 0 0 0 .6-.91V3a1.2 1.2 0 1 1 2.4 0v.06a1 1 0 0 0 .6.91 1 1 0 0 0 1.1-.2l.04-.04a1.2 1.2 0 1 1 1.7 1.7l-.04.04a1 1 0 0 0-.2 1.1v.05a1 1 0 0 0 .91.6H13a1.2 1.2 0 1 1 0 2.4h-.06a1 1 0 0 0-.91.6z"/></svg><span>设置</span>
+              </button>
+              <div class="user-menu-sep"></div>
+              <button class="user-menu-item danger" type="button" data-action="logout">
+                <svg width="16" height="16" viewBox="0 0 16 16"><path d="M6 2H3.5A1.5 1.5 0 0 0 2 3.5v9A1.5 1.5 0 0 0 3.5 14H6v-1H3.5a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5H6V2z"/><path d="M10.15 4.15 13.99 8l-3.84 3.85-.71-.71L12.07 8.5H6v-1h6.07L9.44 4.85l.71-.7z"/></svg><span>退出登录</span>
+              </button>
+            </div>
           </div>
           <div class="save-btn hidden" title="保存文件">
             <svg viewBox="0 0 16 16" width="16" height="16">

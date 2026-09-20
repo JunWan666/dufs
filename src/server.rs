@@ -66,6 +66,7 @@ const EDITABLE_TEXT_MAX_SIZE: u64 = 4194304; // 4M
 const RESUMABLE_UPLOAD_MIN_SIZE: u64 = 20971520; // 20M
 const HEALTH_CHECK_PATH: &str = "__dufs__/health";
 const ADMIN_SETUP_PATH: &str = "__dufs__/admin";
+const ADMIN_SETTINGS_PATH: &str = "__dufs__/admin/settings";
 const ADMIN_CONFIG_FILE: &str = ".dufs-admin.json";
 pub const MAX_SUBPATHS_COUNT: u64 = 1000;
 
@@ -76,6 +77,34 @@ struct AdminConfig {
     password: String,
     #[serde(default = "default_true")]
     allow_anonymous_read: bool,
+    /// 访客免登录可见范围：all（全站只读）| public（仅 /public）| none（必须登录）
+    #[serde(default)]
+    anonymous_scope: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct AdminSettingsPayload {
+    anonymous_scope: String,
+}
+
+/// 访客可见范围 -> 鉴权规则
+fn build_auth_rules(user: &str, hashed_password: &str, anonymous_scope: &str) -> Vec<String> {
+    let mut rules = vec![format!("{user}:{hashed_password}@/:rw")];
+    match anonymous_scope {
+        "all" => rules.push("@/".to_string()),
+        "public" => rules.push("@/public".to_string()),
+        _ => {}
+    }
+    rules
+}
+
+/// 兼容旧配置：没有 anonymous_scope 时按 allow_anonymous_read 推导
+fn resolve_anonymous_scope(config: &AdminConfig) -> String {
+    match config.anonymous_scope.as_deref() {
+        Some(scope) if !scope.is_empty() => scope.to_string(),
+        _ if config.allow_anonymous_read => "all".to_string(),
+        _ => "none".to_string(),
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -89,6 +118,8 @@ struct AdminSetupPayload {
     password: String,
     #[serde(default = "default_true")]
     allow_anonymous_read: bool,
+    #[serde(default)]
+    anonymous_scope: Option<String>,
 }
 
 fn default_true() -> bool {
@@ -155,10 +186,8 @@ impl Server {
             Ok(v) => v,
             Err(_) => return Ok(()),
         };
-        let mut rules = vec![format!("{}:{}@/:rw", config.user, config.password)];
-        if config.allow_anonymous_read {
-            rules.push("@/".to_string());
-        }
+        let scope = resolve_anonymous_scope(&config);
+        let rules = build_auth_rules(&config.user, &config.password, &scope);
         let refs: Vec<&str> = rules.iter().map(|v| v.as_str()).collect();
         args.auth = AccessControl::new(&refs)?;
         Ok(())
@@ -273,10 +302,22 @@ impl Server {
             (x, Some(y)) => (x, y),
         };
 
-        // 管理员账号初始化 / 修改密码（初始化需匿名可达，故在鉴权之后单独处理）
+        // 管理员账号接口：初始化 / 修改密码 / 访问设置（均在鉴权之后处理）
         if method == Method::PUT && relative_path == ADMIN_SETUP_PATH {
             self.handle_admin_setup(req, &mut res, user.clone()).await?;
             return Ok(res);
+        }
+        if relative_path == ADMIN_SETTINGS_PATH {
+            if method == Method::GET {
+                self.handle_admin_settings_get(&mut res, user.clone())
+                    .await?;
+                return Ok(res);
+            }
+            if method == Method::PUT {
+                self.handle_admin_settings(req, &mut res, user.clone())
+                    .await?;
+                return Ok(res);
+            }
         }
 
         if detect_noscript(&user_agent) {
@@ -924,10 +965,16 @@ impl Server {
                 }
             };
 
+        let scope = match payload.anonymous_scope.as_deref() {
+            Some(v) if ["all", "public", "none"].contains(&v) => v.to_string(),
+            _ if payload.allow_anonymous_read => "all".to_string(),
+            _ => "none".to_string(),
+        };
         let config = AdminConfig {
             user: user.clone(),
             password: hashed.clone(),
-            allow_anonymous_read: payload.allow_anonymous_read,
+            allow_anonymous_read: scope != "none",
+            anonymous_scope: Some(scope.clone()),
         };
         let config_path = self.args.serve_path.join(ADMIN_CONFIG_FILE);
         let content = serde_json::to_vec_pretty(&config)?;
@@ -937,10 +984,7 @@ impl Server {
             return Ok(());
         }
 
-        let mut rules = vec![format!("{user}:{hashed}@/:rw")];
-        if payload.allow_anonymous_read {
-            rules.push("@/".to_string());
-        }
+        let rules = build_auth_rules(&user, &hashed, &scope);
         let refs: Vec<&str> = rules.iter().map(|v| v.as_str()).collect();
         *self.auth.write().unwrap() = AccessControl::new(&refs)?;
 
@@ -1012,10 +1056,8 @@ impl Server {
             return Ok(());
         }
 
-        let mut rules = vec![format!("{}:{}@/:rw", config.user, hashed)];
-        if config.allow_anonymous_read {
-            rules.push("@/".to_string());
-        }
+        let scope = resolve_anonymous_scope(&config);
+        let rules = build_auth_rules(&config.user, &hashed, &scope);
         let refs: Vec<&str> = rules.iter().map(|v| v.as_str()).collect();
         *self.auth.write().unwrap() = AccessControl::new(&refs)?;
 
@@ -1024,6 +1066,96 @@ impl Server {
         *res.status_mut() = StatusCode::OK;
         *res.body_mut() = body_full(r#"{"status":"OK"}"#);
         Ok(())
+    }
+
+    /// 读取当前访问设置（仅管理员本人）
+    async fn handle_admin_settings_get(
+        &self,
+        res: &mut Response,
+        user: Option<String>,
+    ) -> Result<()> {
+        let config = match self.read_admin_config().await {
+            Some(v) => v,
+            None => {
+                status_forbid(res);
+                return Ok(());
+            }
+        };
+        if user.as_deref() != Some(config.user.as_str()) {
+            status_forbid(res);
+            return Ok(());
+        }
+        let payload = serde_json::json!({
+            "user": config.user,
+            "anonymous_scope": resolve_anonymous_scope(&config),
+            "serve_path": self.args.serve_path.display().to_string(),
+            "version": env!("CARGO_PKG_VERSION"),
+        });
+        res.headers_mut()
+            .typed_insert(ContentType::from(mime_guess::mime::APPLICATION_JSON));
+        *res.status_mut() = StatusCode::OK;
+        *res.body_mut() = body_full(payload.to_string());
+        Ok(())
+    }
+
+    /// 更新访问设置：访客免登录可见范围（all | public | none）
+    async fn handle_admin_settings(
+        &self,
+        req: Request,
+        res: &mut Response,
+        user: Option<String>,
+    ) -> Result<()> {
+        let mut config = match self.read_admin_config().await {
+            Some(v) => v,
+            None => {
+                status_forbid(res);
+                return Ok(());
+            }
+        };
+        if user.as_deref() != Some(config.user.as_str()) {
+            status_forbid(res);
+            return Ok(());
+        }
+
+        let payload: AdminSettingsPayload = match Self::read_json_body(req).await {
+            Ok(v) => v,
+            Err(_) => {
+                status_bad_request(res, "invalid payload");
+                return Ok(());
+            }
+        };
+        let scope = payload.anonymous_scope.trim().to_string();
+        if !["all", "public", "none"].contains(&scope.as_str()) {
+            status_bad_request(res, "invalid scope");
+            return Ok(());
+        }
+
+        config.anonymous_scope = Some(scope.clone());
+        config.allow_anonymous_read = scope != "none";
+        let content = serde_json::to_vec_pretty(&config)?;
+        let config_path = self.args.serve_path.join(ADMIN_CONFIG_FILE);
+        if let Err(err) = fs::write(&config_path, content).await {
+            log::error!("failed to save admin config: {err}");
+            status_bad_request(res, "cannot persist config");
+            return Ok(());
+        }
+
+        let rules = build_auth_rules(&config.user, &config.password, &scope);
+        let refs: Vec<&str> = rules.iter().map(|v| v.as_str()).collect();
+        *self.auth.write().unwrap() = AccessControl::new(&refs)?;
+
+        res.headers_mut()
+            .typed_insert(ContentType::from(mime_guess::mime::APPLICATION_JSON));
+        *res.status_mut() = StatusCode::OK;
+        *res.body_mut() = body_full(r#"{"status":"OK"}"#);
+        Ok(())
+    }
+
+    /// 读取数据目录中的管理员配置
+    async fn read_admin_config(&self) -> Option<AdminConfig> {
+        let config_path = self.args.serve_path.join(ADMIN_CONFIG_FILE);
+        let content = fs::read_to_string(&config_path).await.ok()?;
+        serde_json::from_str(&content).ok()
     }
 
     async fn handle_internal(
