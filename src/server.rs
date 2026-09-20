@@ -222,6 +222,9 @@ impl Server {
         addr: Option<SocketAddr>,
     ) -> Result<Response, hyper::Error> {
         let uri = req.uri().clone();
+        // 浏览器请求（带 Sec-Fetch-* 头）收到 401 + WWW-Authenticate 时会强制弹出
+        // 原生登录框，页面无法拦截，因此先标记，稍后在响应阶段统一移除该响应头。
+        let is_browser_req = is_browser_request(req.headers());
         let assets_prefix = &self.assets_prefix;
         let enable_cors = self.args.enable_cors;
         let mut http_log_data = self.args.http_logger.data(&req);
@@ -251,6 +254,13 @@ impl Server {
 
         if enable_cors {
             add_cors(&mut res);
+        }
+
+        // 浏览器登录统一走页面上的登录按钮。若下发 WWW-Authenticate，
+        // 浏览器会强制弹出原生账号框（含 fetch/XHR 请求），页面无法拦截。
+        // WebDAV 客户端与 curl 不带 Sec-Fetch-* 头，仍保留认证挑战以便原生认证。
+        if is_browser_req {
+            res.headers_mut().remove("www-authenticate");
         }
         Ok(res)
     }
@@ -409,7 +419,9 @@ impl Server {
             if let Ok(value) = HeaderValue::from_str(&cookie) {
                 res.headers_mut().append(hyper::header::SET_COOKIE, value);
             }
-            self.auth_reject(&mut res)?;
+            // 退出登录是正常操作：清除会话 Cookie 后返回 200。
+            // 若返回 401 + 认证挑战，浏览器会立刻弹出原生登录框。
+            *res.status_mut() = StatusCode::OK;
             return Ok(res);
         }
 
@@ -2320,6 +2332,13 @@ fn extract_cache_headers(meta: &Metadata) -> Option<(ETag, LastModified)> {
     let etag = format!(r#""{timestamp}-{size}""#).parse::<ETag>().ok()?;
     let last_modified = LastModified::from(mtime);
     Some((etag, last_modified))
+}
+
+/// 判断是否为浏览器发起的请求（页面导航、子资源加载、fetch/XHR 都会带 `Sec-Fetch-*`）。
+///
+/// WebDAV 客户端、curl、rclone 等不会带这些头，据此区分可保证原生认证不受影响。
+fn is_browser_request(headers: &hyper::HeaderMap) -> bool {
+    headers.contains_key("sec-fetch-mode") || headers.contains_key("sec-fetch-dest")
 }
 
 /// 判断是否为浏览器发起的页面导航或子资源加载请求。

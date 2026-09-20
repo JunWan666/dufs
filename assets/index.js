@@ -2068,7 +2068,13 @@ async function logout() {
   }
   clearStoredAuth();
   showToast("success", t("signedOut"));
-  location.href = baseUrl();
+  // 退出后跳转到访客仍可浏览的位置：若站点只开放公开目录，直接跳进公开目录，
+  // 避免落在无权访问的根路径上看到 404。
+  if ((DATA.anonymous_scope || "all") === "public") {
+    location.href = baseUrl() + "public/";
+  } else {
+    location.href = baseUrl();
+  }
 }
 
 /**
