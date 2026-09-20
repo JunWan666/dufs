@@ -206,6 +206,7 @@ a {
 .control,
 .login-btn,
 .logout-btn,
+.account-btn,
 .save-btn,
 .language-select,
 .permission-pill {
@@ -218,6 +219,7 @@ a {
 .control,
 .login-btn,
 .logout-btn,
+.account-btn,
 .save-btn {
   display: inline-flex;
   align-items: center;
@@ -237,6 +239,7 @@ a {
 .control:hover,
 .login-btn:hover,
 .logout-btn:hover,
+.account-btn:hover,
 .save-btn:hover {
   border-color: var(--border-strong);
   background: var(--panel-soft);
@@ -245,6 +248,7 @@ a {
 .control:active,
 .login-btn:active,
 .logout-btn:active,
+.account-btn:active,
 .save-btn:active {
   transform: translateY(1px);
 }
@@ -935,6 +939,7 @@ body[data-kind="view"] .toolbox-right {
 
   .control span,
   .login-btn span,
+  .account-btn span,
   .status-meta,
   .paths-table .cell-mtime,
   .paths-table .cell-size {
@@ -943,6 +948,7 @@ body[data-kind="view"] .toolbox-right {
 
   .control,
   .login-btn,
+  .account-btn,
   body:not([data-kind="edit"]) .save-btn {
     width: 36px;
     padding: 0;
