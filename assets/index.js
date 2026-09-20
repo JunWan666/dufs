@@ -1071,7 +1071,9 @@ function addPath(file, index) {
     ${getPathSvg(file.path_type)}
   </td>
   <td class="path cell-name">
-    <a href="${url}" ${isDir ? "" : `target="_blank"`}>${encodedName}</a>${isPublicDir ? '<span class="public-tag">访客可见</span>' : ""}
+    <div class="name-line">
+      <a href="${url}" ${isDir ? "" : `target="_blank"`}>${encodedName}</a>${isPublicDir ? '<span class="public-tag">访客可见</span>' : ""}
+    </div>
   </td>
   <td class="cell-mtime">${formatMtime(file.mtime)}</td>
   <td class="cell-size">${sizeDisplay}</td>
@@ -1166,55 +1168,79 @@ async function setupSettingsPage() {
 
   page.innerHTML = `
     <div class="settings-wrap">
-      <header class="settings-head">
-        <h1>设置</h1>
-        <p>访客访问权限、公开目录与账号管理</p>
-      </header>
+      <nav class="settings-crumbs" aria-label="面包屑">
+        <a href="${dufsEndpoint("")}">首页</a>
+        <span class="crumbs-sep">/</span>
+        <span class="crumbs-current">设置</span>
+      </nav>
 
-      <section class="settings-card">
-        <h2>访客访问权限</h2>
-        <p class="settings-desc">未登录的访客可以访问的范围，修改后立即生效。</p>
-        <div class="settings-options">
-          ${option("all", "全站只读", "所有文件都能被浏览和下载")}
-          ${option("public", "仅公开目录 /public（推荐）", "访客只能看到公开目录里的内容，其他文件完全不可见")}
-          ${option("none", "完全禁止", "任何文件都必须登录后才能访问")}
+      <div class="settings-layout">
+        <aside class="settings-nav" aria-label="设置菜单">
+          <button class="settings-nav-item active" type="button" data-panel="access">访客访问权限</button>
+          <button class="settings-nav-item" type="button" data-panel="public">公开目录</button>
+          <button class="settings-nav-item" type="button" data-panel="account">账号</button>
+          <button class="settings-nav-item" type="button" data-panel="about">服务信息</button>
+        </aside>
+
+        <div class="settings-panels">
+          <section class="settings-panel" data-panel="access">
+            <h2>访客访问权限</h2>
+            <p class="settings-desc">未登录的访客可以访问的范围，修改后立即生效。</p>
+            <div class="settings-options">
+              ${option("all", "全站只读", "所有文件都能被浏览和下载")}
+              ${option("public", "仅公开目录 /public（推荐）", "访客只能看到公开目录里的内容，其他文件完全不可见")}
+              ${option("none", "完全禁止", "任何文件都必须登录后才能访问")}
+            </div>
+            <label class="settings-toggle">
+              <input type="checkbox" id="direct-file-access" ${allowDirect ? "checked" : ""}>
+              <div class="settings-option-text">
+                <strong>允许通过完整链接直接访问文件</strong>
+                <span>开启后：知道完整文件链接的人可以直接打开（仍无法浏览目录）</span>
+              </div>
+            </label>
+          </section>
+
+          <section class="settings-panel hidden" data-panel="public">
+            <h2>公开目录</h2>
+            <p class="settings-desc">把要分享给访客的文件放进 <code>/public</code>，访客无需登录即可浏览和下载。</p>
+            <div class="settings-actions">
+              <button class="btn btn-primary" type="button" id="create-public">一键创建公开目录</button>
+              <span class="settings-status" id="public-status"></span>
+            </div>
+          </section>
+
+          <section class="settings-panel hidden" data-panel="account">
+            <h2>账号</h2>
+            <p class="settings-desc">当前账号：<b>${encodedStr(DATA.user || "admin")}</b></p>
+            <div class="settings-actions">
+              <button class="btn" type="button" id="open-password">修改密码</button>
+            </div>
+          </section>
+
+          <section class="settings-panel hidden" data-panel="about">
+            <h2>服务信息</h2>
+            <ul class="settings-meta">
+              <li>服务目录：<code>${encodedStr(DATA.serve_path || "-")}</code></li>
+              <li>版本：${encodedStr(DATA.version || "-")}</li>
+              <li>当前访客状态：<b>${scopeLabel(scope)}</b>${allowDirect && scope === "public" ? "（可直链访问文件）" : ""}</li>
+            </ul>
+          </section>
         </div>
-        <label class="settings-toggle">
-          <input type="checkbox" id="direct-file-access" ${allowDirect ? "checked" : ""}>
-          <div class="settings-option-text">
-            <strong>允许通过完整链接直接访问文件</strong>
-            <span>开启后：知道完整文件链接的人可以直接打开（仍无法浏览目录）；关闭后：任何文件都必须登录才能访问</span>
-          </div>
-        </label>
-      </section>
-
-      <section class="settings-card">
-        <h2>公开目录</h2>
-        <p class="settings-desc">把要分享给访客的文件放进 <code>/public</code>，访客无需登录即可浏览和下载。</p>
-        <div class="settings-actions">
-          <button class="btn btn-primary" type="button" id="create-public">一键创建公开目录</button>
-          <span class="settings-status" id="public-status"></span>
-        </div>
-      </section>
-
-      <section class="settings-card">
-        <h2>账号</h2>
-        <p class="settings-desc">当前账号：<b>${encodedStr(DATA.user || "admin")}</b></p>
-        <div class="settings-actions">
-          <button class="btn" type="button" id="open-password">修改密码</button>
-        </div>
-      </section>
-
-      <section class="settings-card">
-        <h2>服务信息</h2>
-        <ul class="settings-meta">
-          <li>服务目录：<code>${encodedStr(DATA.serve_path || "-")}</code></li>
-          <li>版本：${encodedStr(DATA.version || "-")}</li>
-          <li>当前访客状态：<b>${scopeLabel(scope)}</b>${allowDirect && scope === "public" ? "（可直链访问文件）" : ""}</li>
-        </ul>
-      </section>
+      </div>
     </div>
   `;
+
+  // 左侧菜单切换
+  page.querySelectorAll(".settings-nav-item").forEach(item => {
+    item.addEventListener("click", () => {
+      page.querySelectorAll(".settings-nav-item").forEach(el => {
+        el.classList.toggle("active", el === item);
+      });
+      page.querySelectorAll(".settings-panel").forEach(panel => {
+        panel.classList.toggle("hidden", panel.dataset.panel !== item.dataset.panel);
+      });
+    });
+  });
 
   async function saveSettings(message) {
     const checked = page.querySelector("input[name='scope']:checked");
@@ -1694,7 +1720,13 @@ async function setupAuth() {
     setupSettingsButton();
   } else {
     $loginBtn.classList.remove("hidden");
-    $loginBtn.addEventListener("click", () => openLoginDialog());
+    $loginBtn.addEventListener("click", async () => {
+      const ok = await openLoginDialog();
+      // 从游客目录（/public）登录管理员时，回到根目录以浏览全部内容
+      if (ok && (DATA.href === "/public/" || DATA.href.startsWith("/public/"))) {
+        location.href = dufsEndpoint("");
+      }
+    });
   }
 }
 
@@ -2010,6 +2042,10 @@ async function checkAuth(variant, options = {}) {
   if (!getAuthHeader() && options.prompt !== false) {
     const ok = await openLoginDialog();
     if (!ok) throw new Error(t("authFailed"));
+    // 从游客目录登录管理员时回到根目录
+    if (DATA.href === "/public/" || DATA.href.startsWith("/public/")) {
+      location.href = dufsEndpoint("");
+    }
     return;
   }
   const qs = variant ? `?${variant}` : "";
