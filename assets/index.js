@@ -563,7 +563,9 @@ function openLoginDialog() {
         showToast("success", t("signedIn"), `${t("signedInAs")}${user}`);
         finish(true);
         // 从游客目录（/public）登录管理员时回到根目录，否则原地刷新
-        if (DATA.href === "/public/" || DATA.href.startsWith("/public/")) {
+        // 注意：DATA.href 形如 "/public"（无尾斜杠）或 "/"（根）
+        const currentDir = (DATA.href || "/").replace(/\/+$/, "") || "/";
+        if (currentDir === "/public") {
           location.href = dufsEndpoint("");
         } else {
           location.reload();
