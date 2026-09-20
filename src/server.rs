@@ -198,18 +198,8 @@ impl Server {
 
     pub async fn handle(self: Arc<Self>, req: Request) -> Result<Response> {
         let mut res = Response::default();
-
         let req_path = req.uri().path();
         let method = req.method().clone();
-
-        // 首次初始化管理员账号（仅在尚未配置任何账号时开放）
-        if method == Method::PUT && self.resolve_path(req_path).as_deref() == Some(ADMIN_SETUP_PATH)
-        {
-            self.handle_admin_setup(req, &mut res).await?;
-            return Ok(res);
-        }
-
-        let headers = req.headers();
 
         let relative_path = match self.resolve_path(req_path) {
             Some(v) => v,
@@ -218,6 +208,20 @@ impl Server {
                 return Ok(res);
             }
         };
+
+        // 凭据文件不对外提供（即使是匿名只读模式）
+        if relative_path == ADMIN_CONFIG_FILE {
+            status_not_found(&mut res);
+            return Ok(res);
+        }
+
+        // 首次初始化管理员账号（仅在尚未配置任何账号时开放）
+        if method == Method::PUT && relative_path == ADMIN_SETUP_PATH {
+            self.handle_admin_setup(req, &mut res).await?;
+            return Ok(res);
+        }
+
+        let headers = req.headers();
 
         if method == Method::GET
             && self
