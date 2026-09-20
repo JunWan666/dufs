@@ -156,7 +156,12 @@ impl Server {
                 .map(|config| config.allow_direct_file_access)
                 .unwrap_or(true),
         ));
-        let assets_prefix = format!("__dufs_v{}__/", env!("CARGO_PKG_VERSION"));
+        // 前端资源前缀带构建编号：每次构建都会变化，浏览器自动重新下载，
+        // 从而避免"改了前端但用户还在用旧缓存"的问题
+        let build_id = option_env!("DUFS_BUILD_ID")
+            .filter(|value| !value.is_empty())
+            .unwrap_or(env!("CARGO_PKG_VERSION"));
+        let assets_prefix = format!("__dufs_v{build_id}__/");
         let single_file_req_paths = if args.path_is_file {
             vec![
                 args.uri_prefix.to_string(),

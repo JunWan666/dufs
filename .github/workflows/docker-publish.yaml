@@ -47,3 +47,5 @@ jobs:
             tannic666/dufs:${{ github.event.inputs.tag || github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            DUFS_BUILD_ID=${{ github.run_number }}
