@@ -18,3 +18,6 @@ VOLUME /data
 WORKDIR /data
 
 ENTRYPOINT ["/bin/dufs"]
+# 默认服务 /data 并开启上传 / 删除 / 搜索 / 打包下载；
+# 只想做只读分享时，把容器命令改为 /data 即可覆盖
+CMD ["/data", "-A"]
