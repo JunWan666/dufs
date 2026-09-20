@@ -883,6 +883,13 @@ async function setupIndexPage() {
     setupAdminSetupBanner();
   }
 
+  // 「仅公开目录」模式：未登录访客打开根路径时引导到公开目录
+  // （已登录用户不受影响，因为这里用的是浏览器里真实保存的登录态）
+  if (!DATA.user && DATA.public_only && DATA.href === "/") {
+    location.replace(dufsEndpoint("public/"));
+    return;
+  }
+
   updatePermissionPill();
 
   if (DATA.allow_search) {
