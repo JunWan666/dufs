@@ -338,6 +338,13 @@ impl Server {
                     && self.is_file_path(&relative_path).await
                 {
                     (None, AccessPaths::new(AccessPerm::ReadOnly))
+                } else if is_browser_navigation(&headers) {
+                    // 浏览器直接导航或加载子资源（图片/脚本/iframe）时无法附带自定义认证头，
+                    // 若返回 401 挑战，浏览器会强制弹出原生登录框（页面无法拦截、取消后仍反复弹）。
+                    // 这类请求返回 404，登录统一走页面上的登录按钮。
+                    // 前端 fetch/XHR 的 Sec-Fetch-Dest 是 "empty"，不在此列，仍返回 401 以便提示登录。
+                    status_not_found(&mut res);
+                    return Ok(res);
                 } else {
                     self.auth_reject(&mut res)?;
                     return Ok(res);
@@ -2313,6 +2320,30 @@ fn extract_cache_headers(meta: &Metadata) -> Option<(ETag, LastModified)> {
     let etag = format!(r#""{timestamp}-{size}""#).parse::<ETag>().ok()?;
     let last_modified = LastModified::from(mtime);
     Some((etag, last_modified))
+}
+
+/// 判断是否为浏览器发起的页面导航或子资源加载请求。
+///
+/// 浏览器在导航（document）和加载图片/脚本/样式/iframe 等子资源时会带上 `Sec-Fetch-Dest`，
+/// 这类请求无法附带 `Authorization` 头，若服务器回复 401 挑战，浏览器会弹出原生登录框。
+/// 前端 `fetch`/`XMLHttpRequest` 的值为 `empty`，不在返回之列（保留 401 以便前端提示登录）。
+fn is_browser_navigation(headers: &hyper::HeaderMap) -> bool {
+    matches!(
+        headers.get("sec-fetch-dest").and_then(|v| v.to_str().ok()),
+        Some("document")
+            | Some("image")
+            | Some("script")
+            | Some("style")
+            | Some("font")
+            | Some("iframe")
+            | Some("frame")
+            | Some("audio")
+            | Some("video")
+            | Some("object")
+            | Some("embed")
+            | Some("manifest")
+            | Some("track")
+    )
 }
 
 fn status_forbid(res: &mut Response) {
