@@ -1313,8 +1313,9 @@ impl Server {
         res: &mut Response,
     ) -> Result<()> {
         let output = self
-            .args
             .auth
+            .read()
+            .unwrap()
             .generate_token(relative_path, &user.unwrap_or_default())?;
         res.headers_mut()
             .typed_insert(ContentType::from(mime_guess::mime::TEXT_PLAIN_UTF_8));
@@ -1622,10 +1623,11 @@ impl Server {
         };
 
         let authorization = headers.get(AUTHORIZATION);
-        let guard = self
-            .args
-            .auth
-            .guard(&dest_path, req.method(), authorization, None, false);
+        let guard =
+            self.auth
+                .read()
+                .unwrap()
+                .guard(&dest_path, req.method(), authorization, None, false);
 
         match guard {
             (_, Some(_)) => {}
