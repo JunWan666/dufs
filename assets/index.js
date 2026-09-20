@@ -879,6 +879,10 @@ async function setupIndexPage() {
     setupNewFile();
   }
 
+  if (DATA.allow_upload && !DATA.auth) {
+    setupAdminSetupBanner();
+  }
+
   updatePermissionPill();
 
   if (DATA.allow_search) {
@@ -1063,6 +1067,93 @@ function addPath(file, index) {
   <td class="cell-size">${sizeDisplay}</td>
   ${actionCell}
 </tr>`);
+}
+
+/** 未配置任何账号时，提示初始化管理员密码 */
+function setupAdminSetupBanner() {
+  const banner = document.getElementById("admin-banner");
+  if (!banner) return;
+  banner.classList.remove("hidden");
+  const action = banner.querySelector(".admin-banner-action");
+  if (action) action.addEventListener("click", openAdminSetupDialog);
+}
+
+/** 首次初始化：设置管理员账号（写入数据目录后立即生效，无需重启） */
+function openAdminSetupDialog() {
+  const layer = document.getElementById("dialog-layer");
+  layer.innerHTML = dialogShell({
+    title: "设置管理员账号",
+    desc: "设置后需要登录才能上传、修改和删除文件；保存立即生效，无需重启容器。",
+    body: `
+      <div class="form-row">
+        <label for="setup-user">用户名</label>
+        <input class="dialog-input" id="setup-user" type="text" value="admin" autocomplete="off">
+      </div>
+      <div class="form-row">
+        <label for="setup-pass">密码</label>
+        <input class="dialog-input" id="setup-pass" type="password" placeholder="至少 4 位" autocomplete="new-password">
+      </div>
+      <label class="setup-check">
+        <input type="checkbox" id="setup-anon" checked>
+        <span>允许访客免登录只读浏览（取消后所有人都必须登录才能访问）</span>
+      </label>
+      <p class="setup-note" id="setup-note"></p>
+    `,
+    actions: `
+      <button class="btn" type="button" data-action="cancel">稍后再说</button>
+      <button class="btn btn-primary" type="button" data-action="confirm">保存并启用</button>
+    `,
+  });
+
+  const $user = layer.querySelector("#setup-user");
+  const $pass = layer.querySelector("#setup-pass");
+  const $anon = layer.querySelector("#setup-anon");
+  const $note = layer.querySelector("#setup-note");
+  const finish = () => closeDialog();
+
+  async function submit() {
+    const user = $user.value.trim();
+    const password = $pass.value;
+    if (!user) {
+      $note.textContent = "请填写用户名";
+      return;
+    }
+    if (password.length < 4) {
+      $note.textContent = "密码至少 4 位";
+      return;
+    }
+    $note.textContent = "正在保存…";
+    try {
+      const prefix = DATA.uri_prefix || "/";
+      const endpoint = new URL(prefix.replace(/\/?$/, "/") + "__dufs__/admin", location.origin).toString();
+      const res = await fetch(endpoint, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user, password, allow_anonymous_read: $anon.checked }),
+      });
+      if (!res.ok) {
+        throw new Error((await res.text()) || `${res.status}`);
+      }
+      closeDialog();
+      showToast("success", "管理员账号已设置", "请使用刚设置的账号登录");
+      setTimeout(() => location.reload(), 1600);
+    } catch (err) {
+      $note.textContent = "设置失败：" + (err.message || "未知错误");
+    }
+  }
+
+  layer.classList.remove("hidden");
+  layer.setAttribute("aria-hidden", "false");
+  $user.focus();
+  layer.querySelector(".dialog-close").addEventListener("click", finish);
+  layer.querySelector("[data-action='cancel']").addEventListener("click", finish);
+  layer.querySelector("[data-action='confirm']").addEventListener("click", submit);
+  $pass.addEventListener("keydown", e => {
+    if (e.key === "Enter") submit();
+  });
+  layer.addEventListener("keydown", e => {
+    if (e.key === "Escape") finish();
+  });
 }
 
 function setupDropzone() {

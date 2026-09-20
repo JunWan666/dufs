@@ -1,6 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 
-use crate::auth::{www_authenticate, AccessPaths, AccessPerm};
+use crate::auth::{www_authenticate, AccessControl, AccessPaths, AccessPerm};
 use crate::http_utils::{body_full, IncomingStream, LengthLimitedStream};
 use crate::noscript::{detect_noscript, generate_noscript_html};
 use crate::utils::{
@@ -30,8 +30,9 @@ use hyper::{
     },
     Method, StatusCode, Uri,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use sha_crypt::{PasswordHasher, ShaCrypt};
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -40,7 +41,7 @@ use std::io::SeekFrom;
 use std::net::SocketAddr;
 use std::path::{Component, Path, PathBuf, MAIN_SEPARATOR};
 use std::sync::atomic::{self, AtomicBool};
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWrite};
@@ -64,7 +65,30 @@ const BUF_SIZE: usize = 65536;
 const EDITABLE_TEXT_MAX_SIZE: u64 = 4194304; // 4M
 const RESUMABLE_UPLOAD_MIN_SIZE: u64 = 20971520; // 20M
 const HEALTH_CHECK_PATH: &str = "__dufs__/health";
+const ADMIN_SETUP_PATH: &str = "__dufs__/admin";
+const ADMIN_CONFIG_FILE: &str = ".dufs-admin.json";
 pub const MAX_SUBPATHS_COUNT: u64 = 1000;
+
+/// 首次初始化后保存到数据目录的管理员配置
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct AdminConfig {
+    user: String,
+    password: String,
+    #[serde(default = "default_true")]
+    allow_anonymous_read: bool,
+}
+
+#[derive(Debug, Deserialize)]
+struct AdminSetupPayload {
+    user: String,
+    password: String,
+    #[serde(default = "default_true")]
+    allow_anonymous_read: bool,
+}
+
+fn default_true() -> bool {
+    true
+}
 
 pub struct Server {
     args: Args,
@@ -72,10 +96,13 @@ pub struct Server {
     html: Cow<'static, str>,
     single_file_req_paths: Vec<String>,
     running: Arc<AtomicBool>,
+    auth: Arc<RwLock<AccessControl>>,
 }
 
 impl Server {
-    pub fn init(args: Args, running: Arc<AtomicBool>) -> Result<Self> {
+    pub fn init(mut args: Args, running: Arc<AtomicBool>) -> Result<Self> {
+        Self::load_admin_credentials(&mut args)?;
+        let auth = Arc::new(RwLock::new(args.auth.clone()));
         let assets_prefix = format!("__dufs_v{}__/", env!("CARGO_PKG_VERSION"));
         let single_file_req_paths = if args.path_is_file {
             vec![
@@ -100,7 +127,34 @@ impl Server {
             single_file_req_paths,
             assets_prefix,
             html,
+            auth,
         })
+    }
+
+    /// 首次访问初始化：从数据目录读取已保存的管理员账号（命令行 -a / 配置文件优先）
+    fn load_admin_credentials(args: &mut Args) -> Result<()> {
+        if args.auth.has_users() {
+            return Ok(());
+        }
+        let config_path = args.serve_path.join(ADMIN_CONFIG_FILE);
+        let content = match std::fs::read_to_string(&config_path) {
+            Ok(v) => v,
+            Err(_) => return Ok(()),
+        };
+        let config: AdminConfig = match serde_json::from_str(&content) {
+            Ok(v) => v,
+            Err(_) => return Ok(()),
+        };
+        let mut rules = vec![format!("{}:{}@/:rw", config.user, config.password)];
+        if config.allow_anonymous_read {
+            rules.push("@/".to_string());
+        }
+        let refs: Vec<&str> = rules.iter().map(|v| v.as_str()).collect();
+        args.auth = AccessControl::new(&refs)?;
+        if !args.hidden.iter().any(|v| v == ADMIN_CONFIG_FILE) {
+            args.hidden.push(ADMIN_CONFIG_FILE.to_string());
+        }
+        Ok(())
     }
 
     pub async fn call(
@@ -146,8 +200,19 @@ impl Server {
         let mut res = Response::default();
 
         let req_path = req.uri().path();
-        let headers = req.headers();
         let method = req.method().clone();
+
+        // 首次初始化管理员账号（仅在尚未配置任何账号时开放）
+        if method == Method::PUT {
+            if let Some(setup_path) = self.resolve_path(req_path) {
+                if setup_path == ADMIN_SETUP_PATH {
+                    self.handle_admin_setup(req, &mut res).await?;
+                    return Ok(res);
+                }
+            }
+        }
+
+        let headers = req.headers();
 
         let relative_path = match self.resolve_path(req_path) {
             Some(v) => v,
@@ -186,7 +251,7 @@ impl Server {
             .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect();
 
-        let guard = self.args.auth.guard(
+        let guard = self.auth.read().unwrap().guard(
             &relative_path,
             &method,
             authorization,
@@ -794,6 +859,82 @@ impl Server {
         Ok(())
     }
 
+    /// 首次访问初始化：设置管理员账号，写入数据目录并立即生效（无需重启）
+    async fn handle_admin_setup(&self, req: Request, res: &mut Response) -> Result<()> {
+        // 已经有账号体系（命令行 -a / 配置文件 / 已初始化）时，永久关闭该入口
+        if self.auth.read().unwrap().has_users() {
+            status_forbid(res);
+            return Ok(());
+        }
+
+        let stream = IncomingStream::new(req.into_body());
+        let body_reader = StreamReader::new(stream.map_err(io::Error::other));
+        pin_mut!(body_reader);
+        let mut buf = Vec::new();
+        if body_reader.read_to_end(&mut buf).await.is_err() || buf.len() > 4096 {
+            status_bad_request(res, "invalid request");
+            return Ok(());
+        }
+
+        let payload: AdminSetupPayload = match serde_json::from_slice(&buf) {
+            Ok(v) => v,
+            Err(_) => {
+                status_bad_request(res, "invalid payload");
+                return Ok(());
+            }
+        };
+
+        let user = payload.user.trim().to_string();
+        let password = payload.password;
+        if user.is_empty()
+            || user.len() > 64
+            || password.len() < 4
+            || password.len() > 128
+            || user.contains(':')
+            || user.contains('@')
+        {
+            status_bad_request(res, "invalid username or password");
+            return Ok(());
+        }
+
+        let salt = Uuid::new_v4().as_simple().to_string();
+        let hashed = match ShaCrypt::SHA512
+            .hash_password_with_salt(password.as_bytes(), salt.as_bytes())
+        {
+            Ok(v) => v.to_string(),
+            Err(_) => {
+                status_bad_request(res, "failed to hash password");
+                return Ok(());
+            }
+        };
+
+        let config = AdminConfig {
+            user: user.clone(),
+            password: hashed.clone(),
+            allow_anonymous_read: payload.allow_anonymous_read,
+        };
+        let config_path = self.args.serve_path.join(ADMIN_CONFIG_FILE);
+        let content = serde_json::to_vec_pretty(&config)?;
+        if let Err(err) = fs::write(&config_path, content).await {
+            log::error!("failed to save admin config: {err}");
+            status_bad_request(res, "cannot persist config");
+            return Ok(());
+        }
+
+        let mut rules = vec![format!("{user}:{hashed}@/:rw")];
+        if payload.allow_anonymous_read {
+            rules.push("@/".to_string());
+        }
+        let refs: Vec<&str> = rules.iter().map(|v| v.as_str()).collect();
+        *self.auth.write().unwrap() = AccessControl::new(&refs)?;
+
+        res.headers_mut()
+            .typed_insert(ContentType::from(mime_guess::mime::APPLICATION_JSON));
+        *res.status_mut() = StatusCode::OK;
+        *res.body_mut() = body_full(r#"{"status":"OK"}"#);
+        Ok(())
+    }
+
     async fn handle_internal(
         &self,
         req_path: &str,
@@ -1031,7 +1172,7 @@ impl Server {
             uri_prefix: self.args.uri_prefix.clone(),
             allow_upload: self.args.allow_upload,
             allow_delete: self.args.allow_delete,
-            auth: self.args.auth.has_users(),
+            auth: self.auth.read().unwrap().has_users(),
             user,
             editable,
         };
@@ -1306,7 +1447,7 @@ impl Server {
             allow_search: self.args.allow_search,
             allow_archive: self.args.allow_archive,
             dir_exists: exist,
-            auth: self.args.auth.has_users(),
+            auth: self.auth.read().unwrap().has_users(),
             user,
             paths,
         };
