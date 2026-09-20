@@ -79,6 +79,11 @@ struct AdminConfig {
 }
 
 #[derive(Debug, Deserialize)]
+struct AdminPasswordPayload {
+    password: String,
+}
+
+#[derive(Debug, Deserialize)]
 struct AdminSetupPayload {
     user: String,
     password: String,
@@ -215,12 +220,6 @@ impl Server {
             return Ok(res);
         }
 
-        // 首次初始化管理员账号（仅在尚未配置任何账号时开放）
-        if method == Method::PUT && relative_path == ADMIN_SETUP_PATH {
-            self.handle_admin_setup(req, &mut res).await?;
-            return Ok(res);
-        }
-
         let headers = req.headers();
 
         if method == Method::GET
@@ -271,6 +270,12 @@ impl Server {
             }
             (x, Some(y)) => (x, y),
         };
+
+        // 管理员账号初始化 / 修改密码（初始化需匿名可达，故在鉴权之后单独处理）
+        if method == Method::PUT && relative_path == ADMIN_SETUP_PATH {
+            self.handle_admin_setup(req, &mut res, user.clone()).await?;
+            return Ok(res);
+        }
 
         if detect_noscript(&user_agent) {
             query_params.insert("noscript".to_string(), String::new());
@@ -860,24 +865,33 @@ impl Server {
         Ok(())
     }
 
-    /// 首次访问初始化：设置管理员账号，写入数据目录并立即生效（无需重启）
-    async fn handle_admin_setup(&self, req: Request, res: &mut Response) -> Result<()> {
-        // 已经有账号体系（命令行 -a / 配置文件 / 已初始化）时，永久关闭该入口
-        if self.auth.read().unwrap().has_users() {
-            status_forbid(res);
-            return Ok(());
-        }
-
+    /// 读取并解析 JSON 请求体（限制 4KB）
+    async fn read_json_body<T: serde::de::DeserializeOwned>(req: Request) -> Result<T> {
         let stream = IncomingStream::new(req.into_body());
         let body_reader = StreamReader::new(stream.map_err(io::Error::other));
         pin_mut!(body_reader);
         let mut buf = Vec::new();
-        if body_reader.read_to_end(&mut buf).await.is_err() || buf.len() > 4096 {
-            status_bad_request(res, "invalid request");
-            return Ok(());
+        body_reader.read_to_end(&mut buf).await?;
+        if buf.len() > 4096 {
+            return Err(anyhow!("payload too large"));
+        }
+        let payload = serde_json::from_slice(&buf)?;
+        Ok(payload)
+    }
+
+    /// 管理员账号接口：未配置账号时用于首次初始化，已配置时用于修改密码
+    async fn handle_admin_setup(
+        &self,
+        req: Request,
+        res: &mut Response,
+        user: Option<String>,
+    ) -> Result<()> {
+        // 已经有账号体系（命令行 -a / 配置文件 / 已初始化）时，走「修改密码」流程
+        if self.auth.read().unwrap().has_users() {
+            return self.handle_admin_update(req, res, user).await;
         }
 
-        let payload: AdminSetupPayload = match serde_json::from_slice(&buf) {
+        let payload: AdminSetupPayload = match Self::read_json_body(req).await {
             Ok(v) => v,
             Err(_) => {
                 status_bad_request(res, "invalid payload");
@@ -923,6 +937,81 @@ impl Server {
 
         let mut rules = vec![format!("{user}:{hashed}@/:rw")];
         if payload.allow_anonymous_read {
+            rules.push("@/".to_string());
+        }
+        let refs: Vec<&str> = rules.iter().map(|v| v.as_str()).collect();
+        *self.auth.write().unwrap() = AccessControl::new(&refs)?;
+
+        res.headers_mut()
+            .typed_insert(ContentType::from(mime_guess::mime::APPLICATION_JSON));
+        *res.status_mut() = StatusCode::OK;
+        *res.body_mut() = body_full(r#"{"status":"OK"}"#);
+        Ok(())
+    }
+
+    /// 已登录管理员修改密码（账号由网页初始化创建、保存在数据目录时可用）
+    async fn handle_admin_update(
+        &self,
+        req: Request,
+        res: &mut Response,
+        user: Option<String>,
+    ) -> Result<()> {
+        let config_path = self.args.serve_path.join(ADMIN_CONFIG_FILE);
+        let content = match fs::read_to_string(&config_path).await {
+            Ok(v) => v,
+            Err(_) => {
+                // 账号来自启动参数或配置文件，网页不支持修改
+                status_forbid(res);
+                return Ok(());
+            }
+        };
+        let mut config: AdminConfig = match serde_json::from_str(&content) {
+            Ok(v) => v,
+            Err(_) => {
+                status_forbid(res);
+                return Ok(());
+            }
+        };
+
+        // 只允许该管理员本人修改（登录凭据已由鉴权流程校验）
+        if user.as_deref() != Some(config.user.as_str()) {
+            status_forbid(res);
+            return Ok(());
+        }
+
+        let payload: AdminPasswordPayload = match Self::read_json_body(req).await {
+            Ok(v) => v,
+            Err(_) => {
+                status_bad_request(res, "invalid payload");
+                return Ok(());
+            }
+        };
+        let password = payload.password;
+        if password.len() < 4 || password.len() > 128 {
+            status_bad_request(res, "invalid password");
+            return Ok(());
+        }
+
+        let salt = Uuid::new_v4().as_simple().to_string();
+        let hashed =
+            match ShaCrypt::SHA512.hash_password_with_salt(password.as_bytes(), salt.as_bytes()) {
+                Ok(v) => v.to_string(),
+                Err(_) => {
+                    status_bad_request(res, "failed to hash password");
+                    return Ok(());
+                }
+            };
+
+        config.password = hashed.clone();
+        let content = serde_json::to_vec_pretty(&config)?;
+        if let Err(err) = fs::write(&config_path, content).await {
+            log::error!("failed to save admin config: {err}");
+            status_bad_request(res, "cannot persist config");
+            return Ok(());
+        }
+
+        let mut rules = vec![format!("{}:{}@/:rw", config.user, hashed)];
+        if config.allow_anonymous_read {
             rules.push("@/".to_string());
         }
         let refs: Vec<&str> = rules.iter().map(|v| v.as_str()).collect();

@@ -1069,6 +1069,89 @@ function addPath(file, index) {
 </tr>`);
 }
 
+/** 已登录时提供「修改密码」入口（仅网页初始化创建的账号可改） */
+function setupAccountButton() {
+  const btn = document.querySelector(".account-btn");
+  if (!btn) return;
+  btn.classList.remove("hidden");
+  btn.addEventListener("click", openPasswordDialog);
+}
+
+/** 修改当前账号密码（写入数据目录，立即生效） */
+function openPasswordDialog() {
+  const layer = document.getElementById("dialog-layer");
+  layer.innerHTML = dialogShell({
+    title: "修改密码",
+    desc: `当前账号：${DATA.user || "admin"}。密码保存在数据目录中，修改后立即生效。`,
+    body: `
+      <div class="form-row">
+        <label for="pwd-new">新密码</label>
+        <input class="dialog-input" id="pwd-new" type="password" placeholder="至少 4 位" autocomplete="new-password">
+      </div>
+      <div class="form-row">
+        <label for="pwd-confirm">确认新密码</label>
+        <input class="dialog-input" id="pwd-confirm" type="password" placeholder="再输入一次" autocomplete="new-password">
+      </div>
+      <p class="setup-note" id="pwd-note"></p>
+    `,
+    actions: `
+      <button class="btn" type="button" data-action="cancel">取消</button>
+      <button class="btn btn-primary" type="button" data-action="confirm">保存</button>
+    `,
+  });
+
+  const $new = layer.querySelector("#pwd-new");
+  const $confirm = layer.querySelector("#pwd-confirm");
+  const $note = layer.querySelector("#pwd-note");
+  const finish = () => closeDialog();
+
+  async function submit() {
+    const password = $new.value;
+    if (password.length < 4) {
+      $note.textContent = "密码至少 4 位";
+      return;
+    }
+    if (password !== $confirm.value) {
+      $note.textContent = "两次输入的密码不一致";
+      return;
+    }
+    $note.textContent = "正在保存…";
+    try {
+      const prefix = DATA.uri_prefix || "/";
+      const endpoint = new URL(prefix.replace(/\/?$/, "/") + "__dufs__/admin", location.origin).toString();
+      const res = await authFetch(endpoint, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      if (!res.ok) {
+        if (res.status === 403) {
+          throw new Error("该账号由启动参数或配置文件提供，请在服务器侧修改");
+        }
+        throw new Error((await res.text()) || `${res.status}`);
+      }
+      closeDialog();
+      showToast("success", "密码已更新", "下次访问请使用新密码登录");
+      setTimeout(() => location.reload(), 1800);
+    } catch (err) {
+      $note.textContent = "修改失败：" + (err.message || "未知错误");
+    }
+  }
+
+  layer.classList.remove("hidden");
+  layer.setAttribute("aria-hidden", "false");
+  $new.focus();
+  layer.querySelector(".dialog-close").addEventListener("click", finish);
+  layer.querySelector("[data-action='cancel']").addEventListener("click", finish);
+  layer.querySelector("[data-action='confirm']").addEventListener("click", submit);
+  $confirm.addEventListener("keydown", e => {
+    if (e.key === "Enter") submit();
+  });
+  layer.addEventListener("keydown", e => {
+    if (e.key === "Escape") finish();
+  });
+}
+
 /** 未配置任何账号时，提示初始化管理员密码 */
 function setupAdminSetupBanner() {
   const banner = document.getElementById("admin-banner");
@@ -1254,6 +1337,7 @@ async function setupAuth() {
     $userName.textContent = DATA.user;
     const avatar = document.querySelector(".user-avatar");
     if (avatar) avatar.textContent = DATA.user.slice(0, 1).toUpperCase();
+    setupAccountButton();
   } else {
     $loginBtn.classList.remove("hidden");
     $loginBtn.addEventListener("click", () => openLoginDialog());
