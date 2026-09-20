@@ -1398,3 +1398,147 @@ body[data-kind="view"] .toolbox-right {
 .settings-check input {
   margin-top: 2px;
 }
+
+
+/* ===== 独立设置页 ===== */
+.settings-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 26px 20px 64px;
+}
+
+.settings-head h1 {
+  margin: 0 0 6px;
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.settings-head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.settings-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 22px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.settings-card h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.settings-desc {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.settings-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-option,
+.settings-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.settings-option:hover,
+.settings-toggle:hover {
+  background: var(--panel-soft);
+}
+
+.settings-option:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.settings-option input,
+.settings-toggle input {
+  flex: 0 0 auto;
+  margin-top: 3px;
+}
+
+.settings-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.settings-option-text strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.settings-option-text span {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.settings-toggle {
+  background: var(--panel-soft);
+}
+
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ===== 公开目录高亮 ===== */
+.public-dir-row .cell-icon {
+  color: var(--success);
+}
+
+.public-dir-row .cell-name a {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.public-tag {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--success-soft);
+  color: var(--success);
+  font-size: 11px;
+  font-weight: 500;
+  vertical-align: middle;
+}
+
+@media (max-width: 640px) {
+  .settings-wrap {
+    padding: 18px 14px 44px;
+  }
+  .settings-card {
+    padding: 16px;
+  }
+}

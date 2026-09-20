@@ -68,6 +68,8 @@ const HEALTH_CHECK_PATH: &str = "__dufs__/health";
 const ADMIN_SETUP_PATH: &str = "__dufs__/admin";
 const ADMIN_SETTINGS_PATH: &str = "__dufs__/admin/settings";
 const SESSION_COOKIE_NAME: &str = "dufs_session";
+/// 访客公开目录名（与匿名规则 @/public 保持一致）
+const PUBLIC_DIR_NAME: &str = "public";
 const ADMIN_CONFIG_FILE: &str = ".dufs-admin.json";
 pub const MAX_SUBPATHS_COUNT: u64 = 1000;
 
@@ -964,6 +966,18 @@ impl Server {
         Ok(())
     }
 
+    /// 当前登录用户是否可以访问管理设置
+    fn can_manage_settings(&self, user: &Option<String>) -> bool {
+        let Some(user) = user.as_deref() else {
+            return false;
+        };
+        match Self::load_admin_config_sync(&self.args.serve_path) {
+            Some(config) => config.user == user,
+            // 账号由启动参数提供时，任何已登录账号都可进入设置
+            None => true,
+        }
+    }
+
     /// 同步读取数据目录中的管理员配置（仅启动时使用）
     fn load_admin_config_sync(serve_path: &Path) -> Option<AdminConfig> {
         let content = std::fs::read_to_string(serve_path.join(ADMIN_CONFIG_FILE)).ok()?;
@@ -1699,6 +1713,10 @@ impl Server {
         access_paths: AccessPaths,
         res: &mut Response,
     ) -> Result<()> {
+        if has_query_flag(query_params, "settings") && !self.can_manage_settings(&user) {
+            self.auth_reject(res)?;
+            return Ok(());
+        }
         if let Some(sort) = query_params.get("sort") {
             if sort == "name" {
                 paths.sort_by(|v1, v2| v1.sort_by_name(v2))
@@ -1717,6 +1735,9 @@ impl Server {
         } else {
             paths.sort_by(|v1, v2| v1.sort_by_name(v2))
         }
+        // 公开目录置顶（稳定排序，其余条目相对顺序不变）
+        paths.sort_by(|v1, v2| v2.is_public_dir().cmp(&v1.is_public_dir()));
+
         if has_query_flag(query_params, "simple") {
             let output = paths
                 .into_iter()
@@ -1745,8 +1766,22 @@ impl Server {
             normalize_path(path.strip_prefix(&self.args.serve_path)?)
         );
         let readwrite = access_paths.perm().readwrite();
+        let is_settings = has_query_flag(query_params, "settings");
+        let admin_config = Self::load_admin_config_sync(&self.args.serve_path);
+        let anonymous_scope = admin_config
+            .as_ref()
+            .map(resolve_anonymous_scope)
+            .unwrap_or_else(|| "none".to_string());
+        let allow_direct_file_access = admin_config
+            .as_ref()
+            .map(|config| config.allow_direct_file_access)
+            .unwrap_or(true);
         let data = IndexData {
-            kind: DataKind::Index,
+            kind: if is_settings {
+                DataKind::Settings
+            } else {
+                DataKind::Index
+            },
             href,
             uri_prefix: self.args.uri_prefix.clone(),
             allow_upload: self.args.allow_upload && readwrite,
@@ -1758,6 +1793,10 @@ impl Server {
             user,
             paths,
             public_only: self.auth.read().unwrap().anonymous_root_is_index_only(),
+            anonymous_scope,
+            allow_direct_file_access,
+            serve_path: self.args.serve_path.display().to_string(),
+            version: env!("CARGO_PKG_VERSION").to_string(),
         };
         let output = if has_query_flag(query_params, "json") {
             res.headers_mut()
@@ -2001,6 +2040,7 @@ pub enum DataKind {
     Index,
     Edit,
     View,
+    Settings,
 }
 
 #[derive(Debug, Serialize)]
@@ -2018,6 +2058,13 @@ pub struct IndexData {
     pub paths: Vec<PathItem>,
     /// 是否处于「匿名仅可访问部分子目录」模式（前端据此引导匿名访客）
     pub public_only: bool,
+    /// 当前访客可见范围：all | public | none
+    pub anonymous_scope: String,
+    /// 是否允许匿名直链读取文件
+    pub allow_direct_file_access: bool,
+    /// 服务目录与版本（设置页展示）
+    pub serve_path: String,
+    pub version: String,
 }
 
 #[derive(Debug, Serialize, Eq, PartialEq, Ord, PartialOrd)]
@@ -2077,6 +2124,11 @@ impl PathItem {
 
     pub fn base_name(&self) -> &str {
         self.name.split('/').next_back().unwrap_or_default()
+    }
+
+    /// 是否为访客公开目录（用于置顶与高亮）
+    pub fn is_public_dir(&self) -> bool {
+        self.is_dir() && self.name == PUBLIC_DIR_NAME
     }
 
     pub fn sort_by_name(&self, other: &Self) -> Ordering {

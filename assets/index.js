@@ -653,6 +653,8 @@ async function ready() {
     document.querySelector(".index-page").classList.remove("hidden");
 
     await setupIndexPage();
+  } else if (DATA.kind === "Settings") {
+    setupSettingsPage();
   } else if (DATA.kind === "Edit") {
     document.title = `${t("editTitle")} ${DATA.href} - Dufs`;
     document.querySelector(".editor-page").classList.remove("hidden");
@@ -1062,13 +1064,14 @@ function addPath(file, index) {
 
   let sizeDisplay = isDir ? formatDirSize(file.size) : formatFileSize(file.size).join(" ");
 
+  const isPublicDir = isDir && file.name === "public";
   $pathsTableBody.insertAdjacentHTML("beforeend", `
-<tr id="addPath${index}">
+<tr id="addPath${index}"${isPublicDir ? ' class="public-dir-row"' : ""}>
   <td class="path cell-icon">
     ${getPathSvg(file.path_type)}
   </td>
   <td class="path cell-name">
-    <a href="${url}" ${isDir ? "" : `target="_blank"`}>${encodedName}</a>
+    <a href="${url}" ${isDir ? "" : `target="_blank"`}>${encodedName}</a>${isPublicDir ? '<span class="public-tag">访客可见</span>' : ""}
   </td>
   <td class="cell-mtime">${formatMtime(file.mtime)}</td>
   <td class="cell-size">${sizeDisplay}</td>
@@ -1118,20 +1121,178 @@ function setupUserMenu() {
     }
   };
   bind("password", openPasswordDialog);
-  bind("settings", openSettingsDialog);
+  bind("settings", openSettingsPage);
   bind("logout", logout);
 }
 
-/** 工具栏「设置」按钮 */
+/** 工具栏「设置」按钮：跳转到独立的设置页 */
 function setupSettingsButton() {
   const btn = document.querySelector(".settings-btn");
   if (!btn) return;
   btn.classList.remove("hidden");
-  btn.addEventListener("click", openSettingsDialog);
+  btn.addEventListener("click", openSettingsPage);
 }
 
-/** 设置页：访客访问权限 + 账号 + 服务信息 */
-async function openSettingsDialog() {
+/** 打开独立的设置页（带 URL，可刷新、可后退） */
+function openSettingsPage() {
+  location.href = baseUrl() + "?settings";
+}
+
+function scopeLabel(scope) {
+  if (scope === "public") return "仅公开目录";
+  if (scope === "none") return "完全禁止";
+  return "全站只读";
+}
+
+/** 独立的设置页：访客访问权限 / 公开目录 / 账号 / 服务信息 */
+async function setupSettingsPage() {
+  const page = document.getElementById("settings-page");
+  if (!page) return;
+  document.querySelector(".index-page").classList.add("hidden");
+  page.classList.remove("hidden");
+
+  const scope = DATA.anonymous_scope || "all";
+  const allowDirect = DATA.allow_direct_file_access !== false;
+  const endpoint = dufsEndpoint("__dufs__/admin/settings");
+
+  const option = (value, title, desc) => `
+    <label class="settings-option">
+      <input type="radio" name="scope" value="${value}" ${scope === value ? "checked" : ""}>
+      <div class="settings-option-text">
+        <strong>${title}</strong>
+        <span>${desc}</span>
+      </div>
+    </label>`;
+
+  page.innerHTML = `
+    <div class="settings-wrap">
+      <header class="settings-head">
+        <h1>设置</h1>
+        <p>访客访问权限、公开目录与账号管理</p>
+      </header>
+
+      <section class="settings-card">
+        <h2>访客访问权限</h2>
+        <p class="settings-desc">未登录的访客可以访问的范围，修改后立即生效。</p>
+        <div class="settings-options">
+          ${option("all", "全站只读", "所有文件都能被浏览和下载")}
+          ${option("public", "仅公开目录 /public（推荐）", "访客只能看到公开目录里的内容，其他文件完全不可见")}
+          ${option("none", "完全禁止", "任何文件都必须登录后才能访问")}
+        </div>
+        <label class="settings-toggle">
+          <input type="checkbox" id="direct-file-access" ${allowDirect ? "checked" : ""}>
+          <div class="settings-option-text">
+            <strong>允许通过完整链接直接访问文件</strong>
+            <span>开启后：知道完整文件链接的人可以直接打开（仍无法浏览目录）；关闭后：任何文件都必须登录才能访问</span>
+          </div>
+        </label>
+      </section>
+
+      <section class="settings-card">
+        <h2>公开目录</h2>
+        <p class="settings-desc">把要分享给访客的文件放进 <code>/public</code>，访客无需登录即可浏览和下载。</p>
+        <div class="settings-actions">
+          <button class="btn btn-primary" type="button" id="create-public">一键创建公开目录</button>
+          <span class="settings-status" id="public-status"></span>
+        </div>
+      </section>
+
+      <section class="settings-card">
+        <h2>账号</h2>
+        <p class="settings-desc">当前账号：<b>${encodedStr(DATA.user || "admin")}</b></p>
+        <div class="settings-actions">
+          <button class="btn" type="button" id="open-password">修改密码</button>
+        </div>
+      </section>
+
+      <section class="settings-card">
+        <h2>服务信息</h2>
+        <ul class="settings-meta">
+          <li>服务目录：<code>${encodedStr(DATA.serve_path || "-")}</code></li>
+          <li>版本：${encodedStr(DATA.version || "-")}</li>
+          <li>当前访客状态：<b>${scopeLabel(scope)}</b>${allowDirect && scope === "public" ? "（可直链访问文件）" : ""}</li>
+        </ul>
+      </section>
+    </div>
+  `;
+
+  async function saveSettings(message) {
+    const checked = page.querySelector("input[name='scope']:checked");
+    const $direct = document.getElementById("direct-file-access");
+    try {
+      const res = await authFetch(endpoint, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          anonymous_scope: checked ? checked.value : "all",
+          allow_direct_file_access: $direct ? $direct.checked : true,
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      showToast("success", "已保存", message || "设置已立即生效");
+    } catch (err) {
+      showToast("error", "保存失败", err.message || "");
+    }
+  }
+
+  page.querySelectorAll("input[name='scope']").forEach(radio => {
+    radio.addEventListener("change", () => {
+      if (!radio.checked) return;
+      saveSettings(
+        radio.value === "public"
+          ? "访客现在只能看到 /public 目录"
+          : "访客访问范围已更新"
+      );
+    });
+  });
+
+  const $direct = document.getElementById("direct-file-access");
+  if ($direct) {
+    $direct.addEventListener("change", () => {
+      saveSettings("直链访问已" + ($direct.checked ? "开启" : "关闭"));
+    });
+  }
+
+  const $status = document.getElementById("public-status");
+  const readme = [
+    "这是公开目录",
+    "============",
+    "",
+    "· 访客无需登录即可浏览和下载本目录里的文件",
+    "· 请把需要分享给他人的文件放到这里",
+    "· 其他目录只有管理员登录后才能访问",
+    "",
+    "（本说明由 Dufs 自动创建，可以自由修改或删除）",
+  ].join("\n");
+
+  document.getElementById("create-public").addEventListener("click", async () => {
+    $status.textContent = "正在检查…";
+    try {
+      const headRes = await authFetch(dufsEndpoint("public/README.txt"), { method: "HEAD" });
+      if (headRes.ok) {
+        $status.textContent = "公开目录已存在 ✅";
+        return;
+      }
+      const res = await authFetch(dufsEndpoint("public/README.txt"), {
+        method: "PUT",
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+        body: readme,
+      });
+      if (!res.ok && res.status !== 201 && res.status !== 204) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      $status.textContent = "已创建 ✅";
+      showToast("success", "公开目录已创建", "/public/README.txt 已写入说明");
+    } catch (err) {
+      $status.textContent = "创建失败：" + (err.message || "未知错误");
+    }
+  });
+
+  document.getElementById("open-password").addEventListener("click", openPasswordDialog);
+}
+
+/** 旧版设置对话框（已被独立设置页取代，保留但不再入口调用） */
+async function openSettingsDialogLegacy() {
   const layer = document.getElementById("dialog-layer");
   layer.innerHTML = dialogShell({
     title: "设置",
