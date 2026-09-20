@@ -81,11 +81,16 @@ struct AdminConfig {
     /// 访客免登录可见范围：all（全站只读）| public（仅 /public）| none（必须登录）
     #[serde(default)]
     anonymous_scope: Option<String>,
+    /// 是否允许匿名通过完整链接直接访问具体文件（仅「仅公开目录」模式生效）
+    #[serde(default = "default_true")]
+    allow_direct_file_access: bool,
 }
 
 #[derive(Debug, Deserialize)]
 struct AdminSettingsPayload {
     anonymous_scope: String,
+    #[serde(default)]
+    allow_direct_file_access: Option<bool>,
 }
 
 /// 访客可见范围 -> 鉴权规则
@@ -121,6 +126,8 @@ struct AdminSetupPayload {
     allow_anonymous_read: bool,
     #[serde(default)]
     anonymous_scope: Option<String>,
+    #[serde(default)]
+    allow_direct_file_access: Option<bool>,
 }
 
 fn default_true() -> bool {
@@ -134,12 +141,19 @@ pub struct Server {
     single_file_req_paths: Vec<String>,
     running: Arc<AtomicBool>,
     auth: Arc<RwLock<AccessControl>>,
+    /// 运行时开关：是否允许匿名直链读取具体文件
+    direct_file_access: Arc<AtomicBool>,
 }
 
 impl Server {
     pub fn init(mut args: Args, running: Arc<AtomicBool>) -> Result<Self> {
         Self::load_admin_credentials(&mut args)?;
         let auth = Arc::new(RwLock::new(args.auth.clone()));
+        let direct_file_access = Arc::new(AtomicBool::new(
+            Self::load_admin_config_sync(&args.serve_path)
+                .map(|config| config.allow_direct_file_access)
+                .unwrap_or(true),
+        ));
         let assets_prefix = format!("__dufs_v{}__/", env!("CARGO_PKG_VERSION"));
         let single_file_req_paths = if args.path_is_file {
             vec![
@@ -165,6 +179,7 @@ impl Server {
             assets_prefix,
             html,
             auth,
+            direct_file_access,
         })
     }
 
@@ -312,6 +327,7 @@ impl Server {
                 // 但目录本身仍需要权限，所以访客无法浏览目录结构。
                 if (method == Method::GET || method == Method::HEAD)
                     && self.auth.read().unwrap().anonymous_root_is_index_only()
+                    && self.direct_file_access.load(atomic::Ordering::Relaxed)
                     && self.is_file_path(&relative_path).await
                 {
                     (None, AccessPaths::new(AccessPerm::ReadOnly))
@@ -948,6 +964,12 @@ impl Server {
         Ok(())
     }
 
+    /// 同步读取数据目录中的管理员配置（仅启动时使用）
+    fn load_admin_config_sync(serve_path: &Path) -> Option<AdminConfig> {
+        let content = std::fs::read_to_string(serve_path.join(ADMIN_CONFIG_FILE)).ok()?;
+        serde_json::from_str(&content).ok()
+    }
+
     /// 判断相对路径是否指向一个已存在的具体文件
     async fn is_file_path(&self, relative_path: &str) -> bool {
         match self.join_path(relative_path) {
@@ -1021,12 +1043,16 @@ impl Server {
             _ if payload.allow_anonymous_read => "all".to_string(),
             _ => "none".to_string(),
         };
+        let direct_file_access = payload.allow_direct_file_access.unwrap_or(true);
         let config = AdminConfig {
             user: user.clone(),
             password: hashed.clone(),
             allow_anonymous_read: scope != "none",
             anonymous_scope: Some(scope.clone()),
+            allow_direct_file_access: direct_file_access,
         };
+        self.direct_file_access
+            .store(direct_file_access, atomic::Ordering::Relaxed);
         let config_path = self.args.serve_path.join(ADMIN_CONFIG_FILE);
         let content = serde_json::to_vec_pretty(&config)?;
         if let Err(err) = fs::write(&config_path, content).await {
@@ -1139,6 +1165,7 @@ impl Server {
         let payload = serde_json::json!({
             "user": config.user,
             "anonymous_scope": resolve_anonymous_scope(&config),
+            "allow_direct_file_access": config.allow_direct_file_access,
             "serve_path": self.args.serve_path.display().to_string(),
             "version": env!("CARGO_PKG_VERSION"),
         });
@@ -1183,6 +1210,11 @@ impl Server {
 
         config.anonymous_scope = Some(scope.clone());
         config.allow_anonymous_read = scope != "none";
+        if let Some(direct) = payload.allow_direct_file_access {
+            config.allow_direct_file_access = direct;
+            self.direct_file_access
+                .store(direct, atomic::Ordering::Relaxed);
+        }
         let content = serde_json::to_vec_pretty(&config)?;
         let config_path = self.args.serve_path.join(ADMIN_CONFIG_FILE);
         if let Err(err) = fs::write(&config_path, content).await {

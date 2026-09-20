@@ -1381,3 +1381,20 @@ body[data-kind="view"] .toolbox-right {
   color: var(--danger);
   font-size: 13px;
 }
+
+.settings-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-soft);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.settings-check input {
+  margin-top: 2px;
+}

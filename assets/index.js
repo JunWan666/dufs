@@ -1172,6 +1172,11 @@ async function openSettingsDialog() {
       <label class="settings-radio"><input type="radio" name="scope" value="all"><span>全站只读 —— 所有文件都能被浏览和下载</span></label>
       <label class="settings-radio"><input type="radio" name="scope" value="public"><span>仅公开目录 <code>/public</code>（推荐）</span></label>
       <label class="settings-radio"><input type="radio" name="scope" value="none"><span>完全禁止 —— 访客必须登录才能访问</span></label>
+      <label class="settings-check">
+        <input type="checkbox" id="direct-file-access">
+        <span>允许通过完整链接直接访问文件（仅「仅公开目录」模式生效）</span>
+      </label>
+      <p class="settings-hint">开启后：知道完整文件链接的人可以直接打开，但仍无法浏览目录；关闭后：任何文件都必须登录才能访问。</p>
       <div class="settings-row">
         <button class="btn btn-primary" type="button" id="create-public">一键创建公开目录</button>
         <span class="settings-status" id="public-status"></span>
@@ -1193,26 +1198,40 @@ async function openSettingsDialog() {
     </section>
   `;
 
-  // 回填当前范围
+  // 回填当前范围与直链开关
   const radios = $body.querySelectorAll("input[name='scope']");
+  const $direct = document.getElementById("direct-file-access");
+  if ($direct) $direct.checked = settings.allow_direct_file_access !== false;
+
+  async function saveSettings() {
+    const scope = (document.querySelector("input[name='scope']:checked") || {}).value || "all";
+    try {
+      const res = await authFetch(endpoint, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          anonymous_scope: scope,
+          allow_direct_file_access: $direct ? $direct.checked : true,
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const detail =
+        scope === "public"
+          ? "访客只能看到 /public 目录" + ($direct && !$direct.checked ? "，且不能用直链绕开" : "")
+          : "访客访问范围已更新";
+      showToast("success", "已保存", detail);
+    } catch (err) {
+      showToast("error", "保存失败", err.message || "");
+    }
+  }
+
   radios.forEach(radio => {
     if (radio.value === (settings.anonymous_scope || "all")) radio.checked = true;
-    radio.addEventListener("change", async () => {
-      if (!radio.checked) return;
-      const status = document.getElementById("public-status");
-      try {
-        const res = await authFetch(endpoint, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ anonymous_scope: radio.value }),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        showToast("success", "已保存", radio.value === "public" ? "访客现在只能看到 /public 目录" : "访客访问范围已更新");
-      } catch (err) {
-        showToast("error", "保存失败", err.message || "");
-      }
+    radio.addEventListener("change", () => {
+      if (radio.checked) saveSettings();
     });
   });
+  if ($direct) $direct.addEventListener("change", saveSettings);
 
   document.getElementById("open-password").addEventListener("click", () => {
     closeDialog();
