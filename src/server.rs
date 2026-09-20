@@ -203,13 +203,10 @@ impl Server {
         let method = req.method().clone();
 
         // 首次初始化管理员账号（仅在尚未配置任何账号时开放）
-        if method == Method::PUT {
-            if let Some(setup_path) = self.resolve_path(req_path) {
-                if setup_path == ADMIN_SETUP_PATH {
-                    self.handle_admin_setup(req, &mut res).await?;
-                    return Ok(res);
-                }
-            }
+        if method == Method::PUT && self.resolve_path(req_path).as_deref() == Some(ADMIN_SETUP_PATH)
+        {
+            self.handle_admin_setup(req, &mut res).await?;
+            return Ok(res);
         }
 
         let headers = req.headers();
@@ -898,15 +895,14 @@ impl Server {
         }
 
         let salt = Uuid::new_v4().as_simple().to_string();
-        let hashed = match ShaCrypt::SHA512
-            .hash_password_with_salt(password.as_bytes(), salt.as_bytes())
-        {
-            Ok(v) => v.to_string(),
-            Err(_) => {
-                status_bad_request(res, "failed to hash password");
-                return Ok(());
-            }
-        };
+        let hashed =
+            match ShaCrypt::SHA512.hash_password_with_salt(password.as_bytes(), salt.as_bytes()) {
+                Ok(v) => v.to_string(),
+                Err(_) => {
+                    status_bad_request(res, "failed to hash password");
+                    return Ok(());
+                }
+            };
 
         let config = AdminConfig {
             user: user.clone(),
