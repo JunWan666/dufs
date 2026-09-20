@@ -314,7 +314,7 @@ impl Server {
                     && self.auth.read().unwrap().anonymous_root_is_index_only()
                     && self.is_file_path(&relative_path).await
                 {
-                    (None, Some(AccessPaths::new(AccessPerm::ReadOnly)))
+                    (None, AccessPaths::new(AccessPerm::ReadOnly))
                 } else {
                     self.auth_reject(&mut res)?;
                     return Ok(res);
